@@ -1,6 +1,15 @@
+//! This module provides functions to validate user input when creating a new player account.
+//!
+//! The rules for each input field are defined within the specific validation function.
+//!
+//! This module also provides a function to validate all input fields at once, which is the most
+//! concise way to utilize this module's functionality
+
 use regex::Regex;
+use serde::Serialize;
 
 /// Check a string to make sure that it could be a valid username.
+///
 /// A valid username must pass the following checks:
 ///
 /// - Its length must be between 6-16 characters.
@@ -52,6 +61,7 @@ pub fn validate_username(input: &str) -> Result<(), Vec<String>> {
 }
 
 /// Check a string to make sure that it could be a valid password.
+///
 /// A valid password must pass the following checks:
 ///
 /// - Its length must be between 8 and 32 characters.
@@ -113,6 +123,7 @@ pub fn validate_password(input: &str) -> Result<(), Vec<String>> {
 }
 
 /// Check a string to make sure that it could be a valid email address.
+///
 /// A valid email address must pass the following checks:
 ///
 /// - It must contain a **single** `@` character, separating the **prefix** and the **domain**.
@@ -211,6 +222,56 @@ pub fn validate_email(input: &str) -> Result<(), Vec<String>> {
     match problems.len() {
         0 => Ok(()),
         _ => Err(problems),
+    }
+}
+
+/// A simple helper function for use in the serialization of InputValidation structs.
+fn is_ok(res: &Result<(), Vec<String>>) -> bool {
+    res.is_ok()
+}
+
+/// Contains the validation information for all input fields at once.\
+///
+/// **Note**: This struct is serializable as it will be returned in the HTTP response body when a
+/// user provides bad input. However, it will only include the fields which **failed validation**
+/// within that serialized version.
+#[derive(Serialize)]
+pub struct InputValidation {
+    #[serde(skip_serializing_if = "is_ok")]
+    username: Result<(), Vec<String>>,
+
+    #[serde(skip_serializing_if = "is_ok")]
+    password: Result<(), Vec<String>>,
+
+    #[serde(skip_serializing_if = "is_ok")]
+    email: Result<(), Vec<String>>,
+}
+
+/// Check the input to make sure that all fields are valid, according to the defined rules for each
+/// input field.
+///
+/// ### Arguments:
+/// - `username`: The input to test for a valid username.
+/// - `password`: The input to test for a valid password.
+/// - `email`: The input to test for a valid email address.
+///
+/// ### Returns:
+/// - `Ok`: The unit type. This signifies that all input has passed validation.
+/// - `Err`: The output of the validation functions for each input. This signifies that **at least
+///   one** input string has failed validation.
+pub fn validate_all(username: &str, password: &str, email: &str) -> Result<(), InputValidation> {
+    let username_validation = validate_username(username);
+    let password_validation = validate_password(password);
+    let email_validation = validate_email(email);
+
+    if username_validation.is_err() || password_validation.is_err() || email_validation.is_err() {
+        Err(InputValidation {
+            username: username_validation,
+            password: password_validation,
+            email: email_validation,
+        })
+    } else {
+        Ok(())
     }
 }
 
