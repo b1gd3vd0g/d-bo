@@ -10,8 +10,8 @@ pub struct PingCounter {
 /// This is a player document in the database.
 #[derive(Deserialize, Serialize)]
 pub struct Player {
-    player_id: Uuid,
-    username: String,
-    password: String,
-    email: String,
+    pub player_id: Uuid,
+    pub username: String,
+    pub password: String,
+    pub email: String,
 }
