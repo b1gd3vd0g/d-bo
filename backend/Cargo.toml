@@ -9,6 +9,7 @@ axum = "0.8.4"
 chrono = { version = "0.4.41", features = ["serde"] }
 dotenvy = "0.15.7"
 jsonwebtoken = "9.3.1"
+lettre = { version = "0.11.18", default-features = false, features = ["builder", "smtp-transport", "tokio1", "tokio1-rustls", "rustls-native-certs", "ring"] }
 mongodb = "3.2.5"
 regex = "1.11.1"
 serde = { version = "1.0.219", features = ["derive"] }
