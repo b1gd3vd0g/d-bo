@@ -1,13 +1,11 @@
+mod models;
+
 use std::env;
 
 use mongodb::{Client, Database, bson::doc};
-use serde::{Deserialize, Serialize};
 use urlencoding::encode;
 
-#[derive(Deserialize, Serialize)]
-struct PingCounter {
-    pings: u32,
-}
+use crate::mongo::models::PingCounter;
 
 pub async fn d_bo_client() -> Database {
     let mongo_username = env::var("MONGO_USERNAME")
