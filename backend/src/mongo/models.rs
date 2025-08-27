@@ -6,3 +6,12 @@ use uuid::Uuid;
 pub struct PingCounter {
     pings: u32,
 }
+
+/// This is a player document in the database.
+#[derive(Deserialize, Serialize)]
+pub struct Player {
+    player_id: Uuid,
+    username: String,
+    password: String,
+    email: String,
+}
