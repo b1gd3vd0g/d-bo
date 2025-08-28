@@ -7,7 +7,7 @@ use std::{env, net::SocketAddr};
 use dotenvy::dotenv;
 use tokio::net::TcpListener;
 
-use crate::{mongo::d_bo_client, router::router};
+use crate::{mongo::d_bo_database, router::router};
 
 #[tokio::main]
 async fn main() {
@@ -20,8 +20,8 @@ async fn main() {
         }
     };
 
-    let mongo_client = d_bo_client().await;
-    let app = router().with_state(mongo_client);
+    let mongo_database = d_bo_database().await;
+    let app = router().with_state(mongo_database);
 
     let address = SocketAddr::from(([0, 0, 0, 0], 60600));
     let listener = TcpListener::bind(address).await.unwrap();

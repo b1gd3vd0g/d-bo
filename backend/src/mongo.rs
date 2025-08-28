@@ -1,4 +1,4 @@
-mod models;
+pub mod models;
 
 use std::env;
 
@@ -7,7 +7,7 @@ use urlencoding::encode;
 
 use crate::mongo::models::PingCounter;
 
-pub async fn d_bo_client() -> Database {
+pub async fn d_bo_database() -> Database {
     let mongo_username = env::var("MONGO_USERNAME")
         .expect(r#"Environment variable "MONGO_USERNAME" is not configured."#);
     let mongo_password = env::var("MONGO_PASSWORD")
