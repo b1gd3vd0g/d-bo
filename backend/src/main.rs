@@ -1,3 +1,4 @@
+mod cors;
 mod email;
 mod errors;
 mod handlers;
@@ -11,7 +12,7 @@ use std::{env, net::SocketAddr};
 use dotenvy::dotenv;
 use tokio::net::TcpListener;
 
-use crate::{mongo::d_bo_database, router::router};
+use crate::{cors::cors, mongo::d_bo_database, router::router};
 
 #[tokio::main]
 async fn main() {
@@ -25,7 +26,7 @@ async fn main() {
     };
 
     let mongo_database = d_bo_database().await;
-    let app = router().with_state(mongo_database);
+    let app = router().with_state(mongo_database).layer(cors());
 
     let address = SocketAddr::from(([0, 0, 0, 0], 60600));
     let listener = TcpListener::bind(address).await.unwrap();
