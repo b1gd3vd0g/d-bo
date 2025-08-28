@@ -1,4 +1,4 @@
-use lettre::transport::smtp::response::{Category, Detail, Severity};
+use lettre::transport::smtp::response::{Category, Severity};
 use mongodb::{Database, bson::doc, error::Error as MongoError};
 use serde::Serialize;
 use uuid::Uuid;
