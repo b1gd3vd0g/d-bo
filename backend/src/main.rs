@@ -1,5 +1,6 @@
 mod email;
 mod errors;
+mod hashing;
 mod mongo;
 mod router;
 mod validation;
