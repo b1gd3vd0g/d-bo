@@ -1,5 +1,6 @@
 use lettre::transport::smtp::response::{Category, Detail, Severity};
 use mongodb::{Database, bson::doc, error::Error as MongoError};
+use serde::Serialize;
 use uuid::Uuid;
 
 use crate::{
@@ -9,6 +10,7 @@ use crate::{
 
 /// This struct reflects a Player object, but obscures away any sensitive data that may be dangerous
 /// to expose to any malicious users.
+#[derive(Serialize)]
 pub struct SafePlayerInfo {
     username: String,
     email: String,
