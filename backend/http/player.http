@@ -1,0 +1,14 @@
+# Test account creation
+
+POST http://localhost:60600/player HTTP/1.1
+Content-Type: application/json
+
+{
+    "username": "test_user_1",
+    "password": "#P455w0rd!",
+    "email": "test_user_1@mail.com"
+}
+
+###
+
+# Verify the email address for test_user_1
