@@ -8,14 +8,13 @@ use mongodb::Database;
 use serde::Deserialize;
 
 use crate::{
-    email,
     errors::DBoError,
     handlers::responses::{ExistingFieldViolationResponse, MessageResponse},
     mongo::models::Player,
 };
 
 #[derive(Deserialize)]
-struct PlayerRegistrationRequestBody {
+pub struct PlayerRegistrationRequestBody {
     username: String,
     password: String,
     email: String,
