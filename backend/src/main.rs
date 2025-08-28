@@ -1,3 +1,4 @@
+mod errors;
 mod mongo;
 mod router;
 mod validation;
