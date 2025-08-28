@@ -4,6 +4,14 @@ use crate::validation::InputValidation;
 pub enum DBoError {
     /// A user has tried to create a new account with an invalid field.
     InvalidPlayerInfo(InputValidation),
+    /// An email could not be sent to the player, **very likely** (but not guaranteed) because the
+    /// provided email address does not exist.
+    NonexistentEmail,
+    /// A server-side error has occurred. These are very unlikely, but not impossible. The String
+    /// should contain a brief description of what went wrong. These strings should NOT be passed to
+    /// the user within the HTTP request body, but instead should be logged using the eprintln!
+    /// macro.
+    ServerSideError(String),
     /// A user has tried to create a new account, but its unique fields are already in use.
     /// The first boolean represents a username violation, the second represents the email.
     UniquenessViolation(bool, bool),
