@@ -33,22 +33,18 @@ pub async fn send_confirmation_email(player_email: &str, username: &str) -> Resu
                 ),
         )
         .unwrap();
-    // .body(String::from(
-    //     "Click the link to confirm your email address.",
-    // ))
-    // .unwrap();
 
-    let username = env::var("SMTP_USERNAME")
+    let smtp_username = env::var("SMTP_USERNAME")
         .expect(r#"Environment variable "SMTP_USERNAME" is not configured"#);
-    let password = env::var("SMTP_PASSWORD")
+    let smtp_password = env::var("SMTP_PASSWORD")
         .expect(r#"Environment variable "SMTP_PASSWORD" is not configured"#);
-    let credentials = Credentials::new(username, password);
+    let smtp_credentials = Credentials::new(smtp_username, smtp_password);
 
-    let host =
+    let smtp_host =
         env::var("SMTP_HOST").expect(r#"Environment variable "SMTP_HOST" is not configured"#);
-    let mailer = AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&host)
+    let mailer = AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&smtp_host)
         .unwrap()
-        .credentials(credentials)
+        .credentials(smtp_credentials)
         .build();
 
     match mailer.send(message).await {
