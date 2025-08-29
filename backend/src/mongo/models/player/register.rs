@@ -4,8 +4,11 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use crate::{
-    email::confirmation::send_confirmation_email, errors::DBoError, hashing::hash_password,
-    mongo::models::Player, validation::validate_all,
+    email::confirmation::send_confirmation_email,
+    errors::DBoError,
+    hashing::hash_password,
+    mongo::{case_insensitive_collation, models::Player},
+    validation::validate_all,
 };
 
 /// This struct reflects a Player object, but obscures away any sensitive data that may be dangerous
@@ -22,10 +25,10 @@ impl Player {
     /// Converts a Player into a SafePlayerInfo struct, obscuring any sensitive data.
     fn safe(&self) -> SafePlayerInfo {
         SafePlayerInfo {
-            username: self.username.clone(),
-            email: self.email.clone(),
-            player_id: self.player_id.clone(),
-            confirmed: self.confirmed,
+            username: self.username(),
+            email: self.email(),
+            player_id: self.player_id(),
+            confirmed: self.confirmed(),
         }
     }
 
@@ -42,7 +45,8 @@ impl Player {
     /// - `Err`: The search failed due to some server-side error.
     async fn find_by_email(db: &Database, email: &str) -> Result<Option<Player>, MongoError> {
         db.collection::<Player>("players")
-            .find_one(doc! { "email": { "$regex": format!("^{}$", email), "$options": "i" } })
+            .find_one(doc! { "email": email })
+            .collation(case_insensitive_collation())
             .await
     }
 
@@ -59,7 +63,8 @@ impl Player {
     /// - `Err`: The search failed due to some server-side error.
     async fn find_by_username(db: &Database, username: &str) -> Result<Option<Player>, MongoError> {
         db.collection::<Player>("players")
-            .find_one(doc! { "username": { "$regex": format!("^{}$", username), "$options": "i" } })
+            .find_one(doc! { "username": username })
+            .collation(case_insensitive_collation())
             .await
     }
 
@@ -165,13 +170,13 @@ impl Player {
             }
         };
 
-        let new_player = Player {
-            username: String::from(username),
-            password: hashed_password,
-            email: String::from(email),
-            player_id: Uuid::new_v4().to_string(),
-            confirmed: false,
-        };
+        let new_player = Player::new(
+            &Uuid::new_v4().to_string(),
+            username,
+            &hashed_password,
+            email,
+            false,
+        );
 
         let insertion = db
             .collection::<Player>("players")

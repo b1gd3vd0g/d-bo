@@ -1,3 +1,5 @@
+pub mod register;
+
 use crate::mongo::models::Player;
 
 impl Player {
