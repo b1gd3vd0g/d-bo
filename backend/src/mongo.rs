@@ -1,14 +1,103 @@
 pub mod models;
 pub mod player;
 
-use std::env;
+use std::{env, time::Duration};
 
-use mongodb::{Client, Database, bson::doc};
+use mongodb::{
+    Client, Database, IndexModel,
+    bson::doc,
+    options::{Collation, CollationStrength, IndexOptions},
+};
 use urlencoding::encode;
 
-use crate::mongo::models::PingCounter;
+use crate::mongo::models::{ConfirmationTokenInfo, PingCounter, Player};
 
-pub async fn d_bo_database() -> Database {
+/// Returns a standard case-insensitive collation for username operations.
+///
+/// Use this when creating indexes or performing queries that should ignore case differences.
+pub fn case_insensitive_collation() -> Collation {
+    Collation::builder()
+        .locale("en")
+        .strength(CollationStrength::Secondary)
+        .build()
+}
+
+/// "Ping" the database, to ensure that the connection can actually be made. This essentially keeps
+/// track of how many times the application has been restarted (and connected successfully).
+///
+/// ### Arguments
+/// - `db`: The MongoDB database to ping.
+async fn ping_database(db: &Database) {
+    let filter = doc! { "name": "pings" };
+    let update = doc! { "$inc": { "pings": 1 } };
+
+    // Test to make sure that the connection works.
+    let _ping = db
+        .collection::<PingCounter>("pings")
+        .find_one_and_update(filter, update)
+        .upsert(true)
+        .await
+        .expect("Failed to connect to the mongodb database.");
+}
+
+/// Verify (and if necessary, create) the following indexes on the database:
+///
+/// - A TTL index on the `confirmation-tokens` collection, so that documents are deleted **two
+///   days** after their creation
+/// - A case-insensitive index on both `email` and `username` fields within `players` collection.
+///
+/// ### Arguments
+/// - `db`: The MongoDB database
+async fn index_database(db: &Database) {
+    // Create TTL index on the confirmation-tokens collection.
+    let conf_tokens_collection = db.collection::<ConfirmationTokenInfo>("confirmation-tokens");
+
+    let _conf_tokens_ttl_index = conf_tokens_collection
+        .create_index(
+            IndexModel::builder()
+                .keys(doc! { "created": 1 })
+                .options(
+                    IndexOptions::builder()
+                        .expire_after(Some(Duration::from_secs(2 * 24 * 60 * 60)))
+                        .name(String::from("confirmation-token-ttl-index"))
+                        .build(),
+                )
+                .build(),
+        )
+        .await
+        .expect("Could not create the ttl index on email confirmation tokens!");
+
+    // Create case-insensitive index on usernames in the players collection
+    let players_collection = db.collection::<Player>("players");
+
+    let _players_username_index = players_collection
+        .create_indexes(vec![
+            IndexModel::builder()
+                .keys(doc! { "username": 1 })
+                .options(
+                    IndexOptions::builder()
+                        .unique(true)
+                        .collation(case_insensitive_collation())
+                        .name(String::from("player-case-insensitive-username-index"))
+                        .build(),
+                )
+                .build(),
+            IndexModel::builder()
+                .keys(doc! { "email": 1 })
+                .options(
+                    IndexOptions::builder()
+                        .unique(true)
+                        .collation(case_insensitive_collation())
+                        .name(String::from("player-case-insensitive-email-index"))
+                        .build(),
+                )
+                .build(),
+        ])
+        .await
+        .expect("Could not create the case-insensitive indexes on player usernames and emails.");
+}
+
+pub async fn connect() -> Database {
     let mongo_username = env::var("MONGO_USERNAME")
         .expect(r#"Environment variable "MONGO_USERNAME" is not configured."#);
     let mongo_password = env::var("MONGO_PASSWORD")
@@ -31,17 +120,8 @@ pub async fn d_bo_database() -> Database {
 
     // This is what we will return from the function to be used as an axum state.
     let mongo_database = mongo_client.database(&mongo_dbname);
-
-    let filter = doc! { "name": "pings" };
-    let update = doc! { "$inc": { "pings": 1 } };
-
-    // Test to make sure that the connection works.
-    let _ping = mongo_database
-        .collection::<PingCounter>("pings")
-        .find_one_and_update(filter, update)
-        .upsert(true)
-        .await
-        .expect("Failed to connect to the mongodb database.");
+    ping_database(&mongo_database).await;
+    index_database(&mongo_database).await;
 
     mongo_database
 }

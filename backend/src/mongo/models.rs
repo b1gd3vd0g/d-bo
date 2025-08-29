@@ -1,17 +1,32 @@
+pub mod confirmation_tokens;
+pub mod player;
+
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// This is a counter of how many times we have tested our connection to the mongodb database.
+/// A document representing the number of `pings` we have made to the database, stored in the
+/// `pings` collection. This is essentially a counter of how many times we have started the app and
+/// successfully connected to the database.
 #[derive(Deserialize, Serialize)]
 pub struct PingCounter {
     pings: u32,
 }
 
-/// This is a player document in the database.
+/// A document representing a player's account information, stored in the `players` collection.
 #[derive(Deserialize, Serialize)]
 pub struct Player {
-    pub player_id: String,
-    pub username: String,
-    pub password: String,
-    pub email: String,
-    pub confirmed: bool,
+    player_id: String,
+    username: String,
+    password: String,
+    email: String,
+    confirmed: bool,
+}
+
+/// A document representing an email confirmation token, stored in the `confirmation-tokens`
+/// collection.
+pub struct ConfirmationTokenInfo {
+    token: String,
+    player_id: String,
+    created: DateTime<Utc>,
+    used: bool,
 }
