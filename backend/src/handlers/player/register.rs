@@ -13,6 +13,7 @@ use crate::{
     mongo::models::Player,
 };
 
+/// This is the required format for the HTTP request body for player registration.
 #[derive(Deserialize)]
 pub struct PlayerRegistrationRequestBody {
     username: String,
@@ -20,6 +21,24 @@ pub struct PlayerRegistrationRequestBody {
     email: String,
 }
 
+/// The HTTP handler for registering a new player.
+///
+/// ### Arguments
+/// - `mongo_database`: The MongoDB database
+/// - `body`: The HTTP request body
+///
+/// ### Returns
+/// An HTTP response to be sent back to the user.
+///
+/// Possible response codes include:
+/// - `201`: Success!
+/// - `400`: One of the following has occured:
+///   - One or more fields in the response body are invalid.
+///   - The confirmation email could not be sent because the provided email does not exist.
+/// - `409`: Either the username or email already exist in the database.
+/// - `422`: The request body could not be deserialized into the required struct.
+///   - (This one is returned automatically by axum)
+/// - `500`: A server-side error has occurred.
 pub async fn handle_player_registration(
     State(mongo_database): State<Database>,
     Json(body): Json<PlayerRegistrationRequestBody>,
@@ -45,7 +64,7 @@ pub async fn handle_player_registration(
             }
             DBoError::ServerSideError(str) => {
                 eprintln!("{}", str);
-                (StatusCode::INTERNAL_SERVER_ERROR, Json(MessageResponse::server_side_error())).into_response()
+                (StatusCode::INTERNAL_SERVER_ERROR).into_response()
             }
         },
     }
