@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 
 import './style.css';
 import { RequireAuth, RequireNoAuth } from './auth_gates';
-import { LayoutWithHeader, LayoutWithoutHeader } from './layout';
+import { LayoutWithHeader, LayoutWithoutHeader } from './layouts';
 import WelcomePage from './pages/welcome';
 import { authLoader } from './util/loaders/auth';
 import HomePage from './pages/home';
