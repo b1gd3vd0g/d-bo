@@ -5,6 +5,8 @@ use crate::validation::InputValidation;
 pub enum DBoError {
     /// A user has tried to create a new account with an invalid field.
     InvalidPlayerInfo(InputValidation),
+    /// A query failed because the document that it tries to update or delete could not be found.
+    MissingDocument,
     /// An email could not be sent to the player, **very likely** (but not guaranteed) because the
     /// provided email address does not exist.
     NonexistentEmail,
@@ -20,4 +22,10 @@ pub enum DBoError {
     /// A user has tried to create a new account, but its unique fields are already in use.
     /// The first boolean represents a username violation, the second represents the email.
     UniquenessViolation(bool, bool),
+}
+
+impl DBoError {
+    pub fn mongo_driver_error() -> Self {
+        Self::ServerSideError(String::from("There was an error with the MongoDB driver."))
+    }
 }
