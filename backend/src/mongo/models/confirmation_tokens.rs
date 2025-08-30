@@ -15,7 +15,7 @@ impl ConfirmationToken {
     ///
     /// ### Arguments
     /// - `player_id`: The id of the Player this token is for.
-    fn new(player_id: &str) -> Self {
+    pub fn new(player_id: &str) -> Self {
         Self {
             token_id: Uuid::new_v4().to_string(),
             player_id: String::from(player_id),
