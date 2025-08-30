@@ -9,11 +9,14 @@ impl Player {
     /// new player registration, as **existing** player accounts should be loaded directly from the
     /// database.
     ///
+    /// **Note**: This does NOT add the player to the database! This is done with the
+    /// `Player::register` function.
+    ///
     /// ### Arguments
     /// - `username`: The new player's username
     /// - `hashed_password`: The new player's **hashed** password
     /// - `email`: The new player's email address
-    pub fn new(username: &str, hashed_password: &str, email: &str) -> Self {
+    fn new(username: &str, hashed_password: &str, email: &str) -> Self {
         Self {
             player_id: Uuid::new_v4().to_string(),
             username: String::from(username),
