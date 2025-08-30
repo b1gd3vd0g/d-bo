@@ -1,7 +1,6 @@
 use lettre::transport::smtp::response::{Category, Severity};
-use mongodb::{Database, bson::doc, error::Error as MongoError};
+use mongodb::{Database, bson::doc};
 use serde::Serialize;
-use uuid::Uuid;
 
 use crate::{
     email::confirmation::send_confirmation_email,
@@ -138,19 +137,22 @@ impl Player {
             }
         };
 
-        let insertion = db
+        let player_insertion = db
             .collection::<Player>("players")
             .insert_one(&new_player)
             .await;
 
-        match insertion {
-            Ok(_) => Ok(new_player.safe()),
+        match player_insertion {
+            Ok(_) => (),
             Err(e) => {
                 eprintln!("{:?}", e);
-                Err(DBoError::ServerSideError(String::from(
+                return Err(DBoError::ServerSideError(String::from(
                     "There was an error with the MongoDB driver.",
-                )))
+                )));
             }
         }
+
+        let _ = confirmation_token.insert(db).await?;
+        Ok(new_player.safe())
     }
 }
