@@ -235,7 +235,7 @@ fn is_ok(res: &Result<(), Vec<String>>) -> bool {
 /// **Note**: This struct is serializable as it will be returned in the HTTP response body when a
 /// user provides bad input. However, it will only include the fields which **failed validation**
 /// within that serialized version.
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct InputValidation {
     #[serde(skip_serializing_if = "is_ok")]
     username: Result<(), Vec<String>>,

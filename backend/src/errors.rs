@@ -1,6 +1,7 @@
 use crate::validation::InputValidation;
 
 /// Encompasses all possible errors that may occur within the D-Bo application.
+#[derive(Debug)]
 pub enum DBoError {
     /// A user has tried to create a new account with an invalid field.
     InvalidPlayerInfo(InputValidation),
