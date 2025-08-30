@@ -7,7 +7,7 @@ use crate::{
     email::confirmation::send_confirmation_email,
     errors::DBoError,
     hashing::hash_password,
-    mongo::{case_insensitive_collation, models::Player},
+    mongo::models::{ConfirmationToken, Player},
     validation::validate_all,
 };
 
@@ -117,6 +117,12 @@ impl Player {
             }
         };
 
+        let new_player = Player::new(username, &hashed_password, email);
+
+        let confirmation_token = ConfirmationToken::new(&new_player.player_id());
+
+        let token_id = confirmation_token.insert(&db).await?;
+
         match send_confirmation_email(email, username).await {
             Ok(_) => (),
             Err(e) => {
@@ -133,8 +139,6 @@ impl Player {
                 )));
             }
         };
-
-        let new_player = Player::new(username, &hashed_password, email);
 
         let insertion = db
             .collection::<Player>("players")
