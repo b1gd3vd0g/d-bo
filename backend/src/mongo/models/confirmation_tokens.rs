@@ -24,7 +24,7 @@ impl ConfirmationToken {
         }
     }
 
-    fn token_id(&self) -> String {
+    pub fn token_id(&self) -> String {
         self.token_id.clone()
     }
 
