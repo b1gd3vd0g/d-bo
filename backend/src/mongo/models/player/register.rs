@@ -121,7 +121,7 @@ impl Player {
 
         let confirmation_token = ConfirmationToken::new(&new_player.player_id());
 
-        match send_confirmation_email(email, username).await {
+        match send_confirmation_email(email, username, &confirmation_token.token_id()).await {
             Ok(_) => (),
             Err(e) => {
                 if let Some(code) = e.status() {

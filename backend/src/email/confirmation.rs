@@ -10,11 +10,20 @@ use lettre::{
     transport::smtp::{Error as SmtpError, authentication::Credentials},
 };
 
-pub async fn send_confirmation_email(player_email: &str, username: &str) -> Result<(), SmtpError> {
+pub async fn send_confirmation_email(
+    player_email: &str,
+    username: &str,
+    token_id: &str,
+) -> Result<(), SmtpError> {
+    let frontend_url = env::var("FRONTEND_URL")
+        .expect(r#"Environment variable "FRONTEND_URL" is not configured."#);
+
     let html_template = read_to_string("src/email/templates/confirmation.html").unwrap();
 
-    let html_message = html_template.replace("{{USERNAME}}", username);
-
+    let html_message = html_template
+        .replace("{{USERNAME}}", username)
+        .replace("{{TOKEN_ID}}", token_id)
+        .replace("{{FRONTEND_URL}}", &frontend_url);
     let message = Message::builder()
         .from("d-bo@bigdevdog.com".parse().unwrap())
         .to(player_email.parse().unwrap())
