@@ -24,8 +24,9 @@ pub struct Player {
 
 /// A document representing an email confirmation token, stored in the `confirmation-tokens`
 /// collection.
-pub struct ConfirmationTokenInfo {
-    token: String,
+#[derive(Serialize, Deserialize)]
+pub struct ConfirmationToken {
+    token_id: String,
     player_id: String,
     created: DateTime<Utc>,
     used: bool,
