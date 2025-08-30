@@ -170,13 +170,7 @@ impl Player {
             }
         };
 
-        let new_player = Player::new(
-            &Uuid::new_v4().to_string(),
-            username,
-            &hashed_password,
-            email,
-            false,
-        );
+        let new_player = Player::new(username, &hashed_password, email);
 
         let insertion = db
             .collection::<Player>("players")
