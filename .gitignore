@@ -1,2 +1,5 @@
 **target/
 **.env
+
+# Contains personal information, for testing purposes
+/backend/http/private.http
