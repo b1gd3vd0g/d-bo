@@ -1,3 +1,4 @@
+pub mod find;
 pub mod register;
 
 use uuid::Uuid;
