@@ -20,4 +20,9 @@
   button {
     @apply my-2 mx-auto px-2 py-1 bg-blue-300 rounded-md;
   }
+
+  input,
+  textarea {
+    @apply w-full rounded-md border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring resize-none;
+  }
 }
