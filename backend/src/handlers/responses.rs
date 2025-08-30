@@ -11,12 +11,6 @@ impl MessageResponse {
             message: String::from(message),
         }
     }
-
-    pub fn server_side_error() -> Self {
-        Self {
-            message: String::from("The request could not be completed due to a server-side error."),
-        }
-    }
 }
 
 #[derive(Serialize)]
