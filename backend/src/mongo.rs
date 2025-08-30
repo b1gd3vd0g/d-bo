@@ -9,7 +9,7 @@ use mongodb::{
 };
 use urlencoding::encode;
 
-use crate::mongo::models::{ConfirmationTokenInfo, PingCounter, Player};
+use crate::mongo::models::{ConfirmationToken, PingCounter, Player};
 
 /// Returns a standard case-insensitive collation for username operations.
 ///
@@ -49,7 +49,7 @@ async fn ping_database(db: &Database) {
 /// - `db`: The MongoDB database
 async fn index_database(db: &Database) {
     // Create TTL index on the confirmation-tokens collection.
-    let conf_tokens_collection = db.collection::<ConfirmationTokenInfo>("confirmation-tokens");
+    let conf_tokens_collection = db.collection::<ConfirmationToken>("confirmation-tokens");
 
     let _conf_tokens_ttl_index = conf_tokens_collection
         .create_index(
