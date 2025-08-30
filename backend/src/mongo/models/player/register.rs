@@ -121,8 +121,6 @@ impl Player {
 
         let confirmation_token = ConfirmationToken::new(&new_player.player_id());
 
-        let token_id = confirmation_token.insert(&db).await?;
-
         match send_confirmation_email(email, username).await {
             Ok(_) => (),
             Err(e) => {
