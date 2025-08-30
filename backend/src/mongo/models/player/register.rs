@@ -77,11 +77,8 @@ impl Player {
                 None => false,
             },
             Err(e) => {
-                // MongoDB Driver threw an error!
                 eprintln!("{:?}", e);
-                return Err(DBoError::ServerSideError(String::from(
-                    "There was an error with the MongoDB driver.",
-                )));
+                return Err(DBoError::mongo_driver_error());
             }
         };
 
@@ -91,11 +88,8 @@ impl Player {
                 None => false,
             },
             Err(e) => {
-                // MongoDB Driver threw an error!
                 eprintln!("{:?}", e);
-                return Err(DBoError::ServerSideError(String::from(
-                    "There was an error with the MongoDB driver.",
-                )));
+                return Err(DBoError::mongo_driver_error());
             }
         };
 
@@ -146,9 +140,7 @@ impl Player {
             Ok(_) => (),
             Err(e) => {
                 eprintln!("{:?}", e);
-                return Err(DBoError::ServerSideError(String::from(
-                    "There was an error with the MongoDB driver.",
-                )));
+                return Err(DBoError::mongo_driver_error());
             }
         }
 
