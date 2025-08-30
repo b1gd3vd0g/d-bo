@@ -66,6 +66,11 @@ pub async fn handle_player_registration(
                 eprintln!("{}", str);
                 (StatusCode::INTERNAL_SERVER_ERROR).into_response()
             }
+            _ => {
+                eprintln!("An unexpected DBoError occurred during player registration! This should not happen!");
+                eprintln!("{:?}", e);
+                (StatusCode::INTERNAL_SERVER_ERROR).into_response()
+            }
         },
     }
 }
