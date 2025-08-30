@@ -19,6 +19,8 @@ pub enum DBoError {
     /// the user within the HTTP request body, but instead should be logged using the eprintln!
     /// macro.
     ServerSideError(String),
+    /// Some kind of token (be it an email confirmation token, JWT, etc.) is expired.
+    TokenExpired,
     /// A user has tried to create a new account, but its unique fields are already in use.
     /// The first boolean represents a username violation, the second represents the email.
     UniquenessViolation(bool, bool),
