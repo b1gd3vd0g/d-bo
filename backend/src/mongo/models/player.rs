@@ -2,6 +2,7 @@ pub mod confirm;
 pub mod delete;
 pub mod find;
 pub mod register;
+pub mod resend;
 
 use uuid::Uuid;
 
