@@ -239,6 +239,7 @@ dependencies = [
  "ahash",
  "base64 0.22.1",
  "bitvec",
+ "chrono",
  "getrandom 0.2.16",
  "getrandom 0.3.3",
  "hex",
@@ -378,6 +379,7 @@ version = "0.1.0"
 dependencies = [
  "argon2",
  "axum",
+ "bson",
  "chrono",
  "dotenvy",
  "jsonwebtoken",
