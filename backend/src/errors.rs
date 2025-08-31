@@ -7,6 +7,8 @@ pub enum DBoError {
     InvalidPlayerInfo(InputValidation),
     /// A query failed because the document that it tries to update or delete could not be found.
     MissingDocument,
+    /// A **search** query returned no results.
+    NoMatch,
     /// A document cannot be created, because it conflicts with the current state of the database.
     /// For example, this could happen when a confirmation token is created, but it does not
     /// correspond with a valid, active player account.
