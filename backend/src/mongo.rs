@@ -26,6 +26,10 @@ pub fn case_insensitive_collation() -> Collation {
 ///
 /// ### Arguments
 /// - `db`: The MongoDB database to ping.
+///
+/// ### Panics
+/// If the database query fails. This indicates an unrecoverable problem with our database
+/// connection.
 async fn ping_database(db: &Database) {
     let filter = doc! { "name": "pings" };
     let update = doc! { "$inc": { "pings": 1 } };
@@ -47,11 +51,13 @@ async fn ping_database(db: &Database) {
 ///
 /// ### Arguments
 /// - `db`: The MongoDB database
+///
+/// ### Panics
+/// If the indexes cannot be created. This indicates an unrecoverable problem with our database
+/// connection and/or setup.
 async fn index_database(db: &Database) {
-    // Create TTL index on the confirmation-tokens collection.
-    let conf_tokens_collection = db.collection::<ConfirmationToken>("confirmation-tokens");
-
-    let _conf_tokens_ttl_index = conf_tokens_collection
+    let _conf_tokens_ttl_index = db
+        .collection::<ConfirmationToken>(&ConfirmationToken::collection())
         .create_index(
             IndexModel::builder()
                 .keys(doc! { "created": 1 })
@@ -66,10 +72,8 @@ async fn index_database(db: &Database) {
         .await
         .expect("Could not create the ttl index on email confirmation tokens!");
 
-    // Create case-insensitive index on usernames in the players collection
-    let players_collection = db.collection::<Player>("players");
-
-    let _players_username_index = players_collection
+    let _players_username_index = db
+        .collection::<Player>(&Player::collection())
         .create_indexes(vec![
             IndexModel::builder()
                 .keys(doc! { "username": 1 })
@@ -96,6 +100,14 @@ async fn index_database(db: &Database) {
         .expect("Could not create the case-insensitive indexes on player usernames and emails.");
 }
 
+/// Connect to the MongoDB database housing all of the data for the D-Bo application.
+///
+/// ### Returns
+/// A MongoDB Database, to use as a State in the axum router.
+///
+/// ### Panics
+/// If the database connection string is invalid, or if the database cannot be pinged, or if the
+/// database indexes could not be created.
 pub async fn connect() -> Database {
     let mongo_username = env::var("MONGO_USERNAME")
         .expect(r#"Environment variable "MONGO_USERNAME" is not configured."#);
