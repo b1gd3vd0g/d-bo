@@ -1,4 +1,3 @@
-use lettre::transport::smtp::response::{Category, Severity};
 use mongodb::{Database, bson::doc};
 use serde::Serialize;
 
@@ -117,13 +116,6 @@ impl Player {
         match send_confirmation_email(email, username, &confirmation_token.token_id()).await {
             Ok(_) => (),
             Err(e) => {
-                if let Some(code) = e.status() {
-                    if code.severity == Severity::PermanentNegativeCompletion
-                        && code.category == Category::MailSystem
-                    {
-                        return Err(DBoError::NonexistentEmail);
-                    }
-                }
                 eprintln!("{:?}", e);
                 return Err(DBoError::ServerSideError(String::from(
                     "The email could not be sent due to a server-side smtp error.",
