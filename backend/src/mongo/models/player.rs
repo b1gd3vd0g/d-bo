@@ -1,3 +1,4 @@
+pub mod confirm;
 pub mod delete;
 pub mod find;
 pub mod register;
