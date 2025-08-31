@@ -5,7 +5,7 @@ use crate::{errors::DBoError, mongo::models::Player};
 impl Player {
     pub async fn delete(db: &Database, player_id: &str) -> Result<(), DBoError> {
         let deletion = db
-            .collection::<Self>("players")
+            .collection::<Self>(&Self::collection())
             .find_one_and_delete(doc! { "player_id": player_id })
             .await;
 

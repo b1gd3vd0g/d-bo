@@ -124,7 +124,7 @@ impl Player {
         };
 
         let player_insertion = db
-            .collection::<Player>("players")
+            .collection::<Self>(&Self::collection())
             .insert_one(&new_player)
             .await;
 
