@@ -3,6 +3,9 @@ use crate::validation::InputValidation;
 /// Encompasses all possible errors that may occur within the D-Bo application.
 #[derive(Debug)]
 pub enum DBoError {
+    /// A document cannot be updated because it does not meet the conditions required for the
+    /// proposed operation
+    ConditionNotMet(String),
     /// A user has tried to create a new account with an invalid field.
     InvalidPlayerInfo(InputValidation),
     /// A query failed because the document that it tries to update or delete could not be found.
