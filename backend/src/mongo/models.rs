@@ -1,7 +1,7 @@
 pub mod confirmation_tokens;
 pub mod player;
 
-use chrono::{DateTime, Utc};
+use bson::DateTime;
 use serde::{Deserialize, Serialize};
 
 /// A document representing the number of `pings` we have made to the database, stored in the
@@ -28,6 +28,5 @@ pub struct Player {
 pub struct ConfirmationToken {
     token_id: String,
     player_id: String,
-    created: DateTime<Utc>,
-    used: bool,
+    created: DateTime,
 }

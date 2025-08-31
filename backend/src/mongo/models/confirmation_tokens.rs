@@ -1,5 +1,6 @@
+use bson::DateTime;
 use chrono::Utc;
-use mongodb::Database;
+use mongodb::{Database, bson::doc};
 use uuid::Uuid;
 
 use crate::{
@@ -19,8 +20,7 @@ impl ConfirmationToken {
         Self {
             token_id: Uuid::new_v4().to_string(),
             player_id: String::from(player_id),
-            created: Utc::now(),
-            used: false,
+            created: DateTime::now(),
         }
     }
 
@@ -31,9 +31,8 @@ impl ConfirmationToken {
     /// Determine whether a confirmation token is expired. A confirmation token is good for **15
     /// minutes** following its creation.
     pub fn expired(&self) -> bool {
-        let delta_time = Utc::now() - self.created;
-        let seconds_elapsed = delta_time.num_seconds();
-        seconds_elapsed < 60 * 15
+        let created = self.created.to_chrono();
+        (Utc::now() - created).num_seconds() > 60 * 15
     }
 
     pub async fn insert(&self, db: &Database) -> Result<String, DBoError> {
@@ -50,9 +49,7 @@ impl ConfirmationToken {
             },
             Err(e) => {
                 eprintln!("{:?}", e);
-                return Err(DBoError::ServerSideError(String::from(
-                    "There was an error with the MongoDB driver.",
-                )));
+                return Err(DBoError::mongo_driver_error());
             }
         };
 
@@ -65,9 +62,62 @@ impl ConfirmationToken {
             Ok(_) => Ok(self.token_id()),
             Err(e) => {
                 eprintln!("{:?}", e);
-                Err(DBoError::ServerSideError(String::from(
-                    "There was an error with the MongoDB driver.",
-                )))
+                Err(DBoError::mongo_driver_error())
+            }
+        }
+    }
+
+    pub async fn confirm(db: &Database, token_id: &str) -> Result<(), DBoError> {
+        let token = db
+            .collection::<ConfirmationToken>("confirmation-tokens")
+            .find_one(doc! { "token_id": token_id })
+            .await;
+
+        let token = match token {
+            Ok(option) => match option {
+                Some(tok) => tok,
+                None => return Err(DBoError::MissingDocument),
+            },
+            Err(e) => {
+                eprintln!("{:?}", e);
+                return Err(DBoError::mongo_driver_error());
+            }
+        };
+
+        if token.expired() {
+            return Err(DBoError::TokenExpired);
+        }
+
+        let _ = Player::confirm(db, &token.player_id).await?;
+
+        let deletion = db
+            .collection::<Self>("confirmation-tokens")
+            .find_one_and_delete(doc! { "token_id": token_id })
+            .await;
+
+        match deletion {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                eprintln!("{:?}", e);
+                Err(DBoError::mongo_driver_error())
+            }
+        }
+    }
+
+    pub async fn reject(db: &Database, token_id: &str) -> Result<(), DBoError> {
+        let deletion = db
+            .collection::<Self>("confirmation-tokens")
+            .find_one_and_delete(doc! { "token_id": token_id })
+            .await;
+
+        match deletion {
+            Ok(option) => match option {
+                Some(token) => Player::delete(db, &token.player_id).await,
+                None => Err(DBoError::MissingDocument),
+            },
+            Err(e) => {
+                eprintln!("{:?}", e);
+                return Err(DBoError::mongo_driver_error());
             }
         }
     }
