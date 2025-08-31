@@ -8,9 +8,7 @@ use mongodb::Database;
 use serde::Deserialize;
 
 use crate::{
-    errors::DBoError,
-    handlers::responses::{ExistingFieldViolationResponse, MessageResponse},
-    mongo::models::Player,
+    errors::DBoError, handlers::responses::ExistingFieldViolationResponse, mongo::models::Player,
 };
 
 /// This is the required format for the HTTP request body for player registration.
