@@ -52,22 +52,19 @@ pub async fn handle_player_registration(
             DBoError::InvalidPlayerInfo(info) => {
                 (StatusCode::BAD_REQUEST, Json(info)).into_response()
             }
-            DBoError::NonexistentEmail => {
-                (
-                StatusCode::BAD_REQUEST,
-                Json(MessageResponse::new(
-                    "A confirmation email could not be sent, likely because the provided email address does not exist.",
-                ))).into_response()
-            }
-            DBoError::UniquenessViolation(username, email) => {
-                (StatusCode::CONFLICT, Json(ExistingFieldViolationResponse::new(username, email))).into_response()
-            }
+            DBoError::UniquenessViolation(username, email) => (
+                StatusCode::CONFLICT,
+                Json(ExistingFieldViolationResponse::new(username, email)),
+            )
+                .into_response(),
             DBoError::ServerSideError(str) => {
                 eprintln!("{}", str);
                 (StatusCode::INTERNAL_SERVER_ERROR).into_response()
             }
             _ => {
-                eprintln!("An unexpected DBoError occurred during player registration! This should not happen!");
+                eprintln!(
+                    "An unexpected DBoError occurred during player registration! This should not happen!"
+                );
                 eprintln!("{:?}", e);
                 (StatusCode::INTERNAL_SERVER_ERROR).into_response()
             }

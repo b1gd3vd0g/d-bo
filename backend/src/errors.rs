@@ -7,9 +7,6 @@ pub enum DBoError {
     InvalidPlayerInfo(InputValidation),
     /// A query failed because the document that it tries to update or delete could not be found.
     MissingDocument,
-    /// An email could not be sent to the player, **very likely** (but not guaranteed) because the
-    /// provided email address does not exist.
-    NonexistentEmail,
     /// A document cannot be created, because it conflicts with the current state of the database.
     /// For example, this could happen when a confirmation token is created, but it does not
     /// correspond with a valid, active player account.
