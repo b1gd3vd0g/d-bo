@@ -1,6 +1,9 @@
-use mongodb::{Database, bson::doc, error::Error as MongoError};
+use mongodb::{Database, bson::doc};
 
-use crate::mongo::{case_insensitive_collation, models::Player};
+use crate::{
+    errors::DBoError,
+    mongo::{case_insensitive_collation, models::Player},
+};
 
 impl Player {
     /// Find a **single** player account by case-insensitively searching for their **entire** email
@@ -14,11 +17,23 @@ impl Player {
     /// - `Ok<Some>`: An existing user was found.
     /// - `Ok<None>`: An existing user was not found, but the search was successful.
     /// - `Err`: The search failed due to some server-side error.
-    pub async fn find_by_email(db: &Database, email: &str) -> Result<Option<Player>, MongoError> {
-        db.collection::<Player>("players")
+    pub async fn find_by_email(db: &Database, email: &str) -> Result<Player, DBoError> {
+        let query = db
+            .collection::<Self>(&Self::collection())
             .find_one(doc! { "email": email })
             .collation(case_insensitive_collation())
-            .await
+            .await;
+
+        match query {
+            Ok(opt) => match opt {
+                Some(player) => Ok(player),
+                None => Err(DBoError::NoMatch),
+            },
+            Err(e) => {
+                eprintln!("{:?}", e);
+                Err(DBoError::mongo_driver_error())
+            }
+        }
     }
 
     /// Find a **single** player account by case-insensitively searching for their **entire**
@@ -32,14 +47,23 @@ impl Player {
     /// - `Ok<Some>`: An existing user was found.
     /// - `Ok<None>`: An existing user was not found, but the search was successful.
     /// - `Err`: The search failed due to some server-side error.
-    pub async fn find_by_username(
-        db: &Database,
-        username: &str,
-    ) -> Result<Option<Player>, MongoError> {
-        db.collection::<Player>("players")
+    pub async fn find_by_username(db: &Database, username: &str) -> Result<Player, DBoError> {
+        let query = db
+            .collection::<Self>(&Self::collection())
             .find_one(doc! { "username": username })
             .collation(case_insensitive_collation())
-            .await
+            .await;
+
+        match query {
+            Ok(opt) => match opt {
+                Some(player) => Ok(player),
+                None => Err(DBoError::NoMatch),
+            },
+            Err(e) => {
+                eprintln!("{:?}", e);
+                return Err(DBoError::mongo_driver_error());
+            }
+        }
     }
 
     /// Find a **single** player account by searching for their `player_id`.
@@ -55,9 +79,21 @@ impl Player {
     /// - `Ok<Some>`: An existing user was found.
     /// - `Ok<None>`: An existing user was not found, but the search was successful.
     /// - `Err`: The search failed due to some server-side error.
-    pub async fn find_by_id(db: &Database, player_id: &str) -> Result<Option<Player>, MongoError> {
-        db.collection::<Player>("players")
+    pub async fn find_by_id(db: &Database, player_id: &str) -> Result<Player, DBoError> {
+        let query = db
+            .collection::<Self>(&Player::collection())
             .find_one(doc! { "player_id": player_id })
-            .await
+            .await;
+
+        match query {
+            Ok(opt) => match opt {
+                Some(player) => Ok(player),
+                None => Err(DBoError::NoMatch),
+            },
+            Err(e) => {
+                eprintln!("{:?}", e);
+                return Err(DBoError::mongo_driver_error());
+            }
+        }
     }
 }

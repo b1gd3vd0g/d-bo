@@ -41,21 +41,17 @@ impl ConfirmationToken {
     }
 
     pub async fn insert(&self, db: &Database) -> Result<String, DBoError> {
-        let player = Player::find_by_id(db, &self.player_id).await;
-        match player {
-            Ok(option) => match option {
-                Some(_) => (),
-                None => {
+        let _player = match Player::find_by_id(db, &self.player_id).await {
+            Ok(_) => (),
+            Err(e) => match e {
+                DBoError::NoMatch => {
                     return Err(DBoError::RelationalConflict(format!(
                         "player_id {} does not correspond with an active player account.",
                         self.player_id
                     )));
                 }
+                _ => return Err(e),
             },
-            Err(e) => {
-                eprintln!("{:?}", e);
-                return Err(DBoError::mongo_driver_error());
-            }
         };
 
         let insertion = db

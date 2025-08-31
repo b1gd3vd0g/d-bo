@@ -71,25 +71,19 @@ impl Player {
         };
 
         let existing_username = match Self::find_by_username(db, username).await {
-            Ok(option) => match option {
-                Some(_) => true,
-                None => false,
+            Ok(_) => true,
+            Err(e) => match e {
+                DBoError::NoMatch => false,
+                _ => return Err(e),
             },
-            Err(e) => {
-                eprintln!("{:?}", e);
-                return Err(DBoError::mongo_driver_error());
-            }
         };
 
         let existing_email = match Self::find_by_email(db, email).await {
-            Ok(option) => match option {
-                Some(_) => true,
-                None => false,
+            Ok(_) => true,
+            Err(e) => match e {
+                DBoError::NoMatch => false,
+                _ => return Err(e),
             },
-            Err(e) => {
-                eprintln!("{:?}", e);
-                return Err(DBoError::mongo_driver_error());
-            }
         };
 
         if existing_username || existing_email {
