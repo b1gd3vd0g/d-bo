@@ -32,6 +32,8 @@ impl Player {
             password: String::from(hashed_password),
             email: String::from(email),
             confirmed: false,
+            email_verified: false,
+            proposed_email: None,
         }
     }
 

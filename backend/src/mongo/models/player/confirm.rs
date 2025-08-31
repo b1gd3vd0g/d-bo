@@ -8,7 +8,7 @@ impl Player {
             .collection::<Self>(&Self::collection())
             .find_one_and_update(
                 doc! { "player_id": player_id },
-                doc! { "$set": { "confirmed": true } },
+                doc! { "$set": { "confirmed": true, "email_verified": true } },
             )
             .await;
 

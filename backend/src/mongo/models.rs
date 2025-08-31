@@ -20,6 +20,8 @@ pub struct Player {
     password: String,
     email: String,
     confirmed: bool,
+    email_verified: bool,
+    proposed_email: Option<String>,
 }
 
 /// A document representing an email confirmation token, stored in the `confirmation-tokens`
