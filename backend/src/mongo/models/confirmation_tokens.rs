@@ -9,6 +9,11 @@ use crate::{
 };
 
 impl ConfirmationToken {
+    /// Get the collection housing all confirmation tokens.
+    pub fn collection() -> String {
+        String::from("confirmation-tokens")
+    }
+
     /// Create a new confirmation token struct.
     ///
     /// **Note**: This does not add the token to the database! This is done with the
@@ -54,7 +59,7 @@ impl ConfirmationToken {
         };
 
         let insertion = db
-            .collection::<ConfirmationToken>("confirmation-tokens")
+            .collection::<Self>(&Self::collection())
             .insert_one(self)
             .await;
 
@@ -67,9 +72,24 @@ impl ConfirmationToken {
         }
     }
 
+    pub async fn delete_by_player_id(db: &Database, player_id: &str) -> Result<(), DBoError> {
+        let deletion = db
+            .collection::<Self>(&Self::collection())
+            .delete_many(doc! { "player_id": player_id })
+            .await;
+
+        match deletion {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                eprintln!("{:?}", e);
+                return Err(DBoError::mongo_driver_error());
+            }
+        }
+    }
+
     pub async fn confirm(db: &Database, token_id: &str) -> Result<(), DBoError> {
         let token = db
-            .collection::<ConfirmationToken>("confirmation-tokens")
+            .collection::<Self>(&Self::collection())
             .find_one(doc! { "token_id": token_id })
             .await;
 
@@ -91,7 +111,7 @@ impl ConfirmationToken {
         let _ = Player::confirm(db, &token.player_id).await?;
 
         let deletion = db
-            .collection::<Self>("confirmation-tokens")
+            .collection::<Self>(&Self::collection())
             .find_one_and_delete(doc! { "token_id": token_id })
             .await;
 
@@ -106,7 +126,7 @@ impl ConfirmationToken {
 
     pub async fn reject(db: &Database, token_id: &str) -> Result<(), DBoError> {
         let deletion = db
-            .collection::<Self>("confirmation-tokens")
+            .collection::<Self>(&Self::collection())
             .find_one_and_delete(doc! { "token_id": token_id })
             .await;
 

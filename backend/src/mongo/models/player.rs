@@ -8,6 +8,11 @@ use uuid::Uuid;
 use crate::mongo::models::Player;
 
 impl Player {
+    /// Get the collection housing all player documents
+    pub fn collection() -> String {
+        String::from("players")
+    }
+
     /// Create a new Player struct from valid player input. This function should only be used upon
     /// new player registration, as **existing** player accounts should be loaded directly from the
     /// database.
