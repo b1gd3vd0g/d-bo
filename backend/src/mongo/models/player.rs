@@ -4,6 +4,7 @@ pub mod find;
 pub mod register;
 pub mod resend;
 
+use bson::DateTime;
 use uuid::Uuid;
 
 use crate::mongo::models::Player;
@@ -34,6 +35,7 @@ impl Player {
             confirmed: false,
             email_verified: false,
             proposed_email: None,
+            created: DateTime::now(),
         }
     }
 

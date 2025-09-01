@@ -19,6 +19,7 @@ pub struct Player {
     username: String,
     password: String,
     email: String,
+    created: DateTime,
     confirmed: bool,
     email_verified: bool,
     proposed_email: Option<String>,
