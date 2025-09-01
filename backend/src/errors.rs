@@ -12,6 +12,8 @@ pub enum DBoError {
     MissingDocument,
     /// A **search** query returned no results.
     NoMatch,
+    /// The password provided does not match the records in the database.
+    PasswordMismatch,
     /// A document cannot be created, because it conflicts with the current state of the database.
     /// For example, this could happen when a confirmation token is created, but it does not
     /// correspond with a valid, active player account.
