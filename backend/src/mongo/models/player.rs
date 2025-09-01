@@ -1,6 +1,7 @@
 pub mod confirm;
 pub mod delete;
 pub mod find;
+pub mod login;
 pub mod register;
 pub mod resend;
 
