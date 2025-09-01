@@ -70,9 +70,9 @@ async fn index_database(db: &Database) {
                 .build(),
         )
         .await
-        .expect("Could not create the ttl index on email confirmation tokens!");
+        .expect(r#"Could not create the indexes on the "confirmation-tokens" collection"#);
 
-    let _players_username_index = db
+    let _players_indexes = db
         .collection::<Player>(&Player::collection())
         .create_indexes(vec![
             IndexModel::builder()
@@ -95,9 +95,19 @@ async fn index_database(db: &Database) {
                         .build(),
                 )
                 .build(),
+            IndexModel::builder()
+                .keys(doc! { "created": 1 })
+                .options(
+                    IndexOptions::builder()
+                        .expire_after(Duration::from_secs(60 * 60 * 24 * 2))
+                        .partial_filter_expression(doc! { "confirmed": false })
+                        .name(String::from("unconfirmed-player-ttl-index"))
+                        .build(),
+                )
+                .build(),
         ])
         .await
-        .expect("Could not create the case-insensitive indexes on player usernames and emails.");
+        .expect(r#"Could not create the indexes on the "players" collection"#);
 }
 
 /// Connect to the MongoDB database housing all of the data for the D-Bo application.
