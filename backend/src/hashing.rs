@@ -12,7 +12,7 @@ use argon2::{
 /// into this function - this makes an `Err` result very unlikely.
 ///
 /// ### Arguments
-/// - `password`: The user provided password to be hashed.
+/// - `password`: The user provided, raw text password to be hashed.
 ///
 /// ### Returns
 /// - `Ok`: The secure hash.
@@ -20,9 +20,13 @@ use argon2::{
 ///   not impossible.
 pub fn hash_password(password: &str) -> Result<String, HashingError> {
     let salt = SaltString::generate(&mut OsRng);
+
     match Argon2::default().hash_password(password.as_bytes(), &salt) {
         Ok(hash) => Ok(hash.to_string()),
         Err(e) => {
+            eprintln!(
+                "An error has occurred while creating a new password hash. This should not happen!"
+            );
             eprintln!("{:?}", e);
             Err(e)
         }
@@ -43,6 +47,9 @@ pub fn verify_password(password: &str, hash: &str) -> Result<bool, HashingError>
     let parsed_hash = match PasswordHash::new(hash) {
         Ok(parsed) => parsed,
         Err(e) => {
+            eprintln!(
+                "An error has occurred while parsing a password hash from the database. This should not happen!"
+            );
             eprintln!("{:?}", e);
             return Err(e);
         }
@@ -50,9 +57,6 @@ pub fn verify_password(password: &str, hash: &str) -> Result<bool, HashingError>
 
     match Argon2::default().verify_password(password.as_bytes(), &parsed_hash) {
         Ok(_) => Ok(true),
-        Err(e) => {
-            eprintln!("{:?}", e);
-            Ok(false)
-        }
+        Err(_) => Ok(false),
     }
 }
