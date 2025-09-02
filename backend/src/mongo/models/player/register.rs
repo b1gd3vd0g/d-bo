@@ -16,7 +16,6 @@ pub struct SafePlayerInfo {
     username: String,
     email: String,
     player_id: String,
-    confirmed: bool,
 }
 
 impl Player {
@@ -26,7 +25,6 @@ impl Player {
             username: self.username(),
             email: self.email(),
             player_id: self.player_id(),
-            confirmed: self.confirmed(),
         }
     }
 
