@@ -16,8 +16,10 @@ pub async fn handle_token_confirmation(
     match confirmation {
         Ok(()) => (StatusCode::OK).into_response(),
         Err(e) => match e {
-            DBoError::MissingDocument => (StatusCode::NOT_FOUND).into_response(),
+            DBoError::NoMatch => (StatusCode::NOT_FOUND).into_response(),
             DBoError::TokenExpired => (StatusCode::GONE).into_response(),
+            DBoError::MissingDocument => (StatusCode::CONFLICT).into_response(),
+            DBoError::IdempotencyError => (StatusCode::BAD_REQUEST).into_response(),
             DBoError::ServerSideError(str) => {
                 eprintln!("{}", str);
                 (StatusCode::INTERNAL_SERVER_ERROR).into_response()
@@ -42,7 +44,7 @@ pub async fn handle_token_rejection(
     match rejection {
         Ok(()) => (StatusCode::OK).into_response(),
         Err(e) => match e {
-            DBoError::MissingDocument => (StatusCode::NOT_FOUND).into_response(),
+            DBoError::NoMatch => (StatusCode::NOT_FOUND).into_response(),
             DBoError::ServerSideError(str) => {
                 eprintln!("{}", str);
                 (StatusCode::INTERNAL_SERVER_ERROR).into_response()

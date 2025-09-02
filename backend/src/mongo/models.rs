@@ -32,4 +32,5 @@ pub struct ConfirmationToken {
     token_id: String,
     player_id: String,
     created: DateTime,
+    used: bool,
 }

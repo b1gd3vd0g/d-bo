@@ -48,10 +48,16 @@ The following is a roadmap to completion of the D-Bo Backend crate. This documen
 - `[x]` Add `created` field to `Player`, and create a partial TTL index to players which will delete **unconfirmed** accounts after two days
 - `[x]` Implement `Player::login(..)` function. Currently, this works to verify that an email and password match, but it needs to be extended once JWT functionality is enabled.
 - `[x]` In order to enforce environment-related panicking at startup instead of after an HTTP endpoint is activated, export a static ENV variable that will be lazy loaded on startup, and can be used within any module.
+- `[x]` Fix inconsistencies within player confirmation process - be able to distinguish between "player already confirmed", "player account missing", "token expired", etc.
 
 ## Incomplete
 
-- `[ ]` Enable JWT functionality for authentication tokens **and** refresh tokens.
+- `[ ]` Update (and finally commit to git) my API documentation
+- `[ ]` Reconfigure currently written functionality to support layered functionality and further enforce the Single Responsibility Principle.
+  - Database models should only handle database queries (and input validation on construction)
+  - The service functions should perform all the operations necessary to complete the request
+  - The handler functions should parse the HTTP request, call the service functions, and then map the result to a valid HTTP response.
+- `[ ]` Enable JWT functionality for authentication tokens **and** refresh tokens
 - `[ ]` Allow players to change their email address
 - `[ ]` Allow players to change their passwords
 - `[ ]` Expand unit testing

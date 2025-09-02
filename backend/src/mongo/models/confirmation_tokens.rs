@@ -26,6 +26,7 @@ impl ConfirmationToken {
             token_id: Uuid::new_v4().to_string(),
             player_id: String::from(player_id),
             created: DateTime::now(),
+            used: false,
         }
     }
 
@@ -83,7 +84,21 @@ impl ConfirmationToken {
         }
     }
 
+    /// Confirm a player's account by finding the associated account and marking it confirmed, and
+    /// flagging the token as `used`.
+    ///
+    /// ### Arguments
+    /// - `db`: The MongoDB database
+    /// - `token_id`: The token_id to search for.
+    ///
+    /// ### Errors
+    /// - `DBoError::NoMatch`: The token cannot be found.
+    /// - `DBoError::IdempotencyError`: The player's account has already been confirmed.
+    /// - `DBoError::TokenExpired`: The token was found, but it has expired after 15 minutes.
+    /// - `DBoError::MissingDocument`: The associated player account has already expired.
+    /// - `DBoError::ServerSideError`: A MongoDB query failed.
     pub async fn confirm(db: &Database, token_id: &str) -> Result<(), DBoError> {
+        // find the token
         let token = db
             .collection::<Self>(&Self::collection())
             .find_one(doc! { "token_id": token_id })
@@ -92,7 +107,7 @@ impl ConfirmationToken {
         let token = match token {
             Ok(option) => match option {
                 Some(tok) => tok,
-                None => return Err(DBoError::MissingDocument),
+                None => return Err(DBoError::NoMatch),
             },
             Err(e) => {
                 eprintln!("{:?}", e);
@@ -100,18 +115,25 @@ impl ConfirmationToken {
             }
         };
 
+        if token.used {
+            return Err(DBoError::IdempotencyError);
+        }
+
         if token.expired() {
             return Err(DBoError::TokenExpired);
         }
 
         let _ = Player::confirm(db, &token.player_id).await?;
 
-        let deletion = db
+        let update = db
             .collection::<Self>(&Self::collection())
-            .find_one_and_delete(doc! { "token_id": token_id })
+            .find_one_and_update(
+                doc! { "token_id": token_id },
+                doc! { "$set": { "used": true } },
+            )
             .await;
 
-        match deletion {
+        match update {
             Ok(_) => Ok(()),
             Err(e) => {
                 eprintln!("{:?}", e);
@@ -120,20 +142,65 @@ impl ConfirmationToken {
         }
     }
 
+    /// Reject an email confirmation, and wipe all related data from the database permanently.
+    ///
+    /// ### Arguments
+    /// - `db`: The MongoDB database
+    /// - `token_id`: The token id to search for.
+    ///
+    /// ### Errors
+    /// - `DBoError::NoMatch`: The token_id could not be found.
+    /// - `DBoError::ServerSideError`: A MongoDB query has failed.
     pub async fn reject(db: &Database, token_id: &str) -> Result<(), DBoError> {
-        let deletion = db
+        let token = db
             .collection::<Self>(&Self::collection())
-            .find_one_and_delete(doc! { "token_id": token_id })
+            .find_one(doc! { "token_id": token_id })
             .await;
 
-        match deletion {
-            Ok(option) => match option {
-                Some(token) => Player::delete(db, &token.player_id).await,
-                None => Err(DBoError::MissingDocument),
+        let token = match token {
+            Ok(opt) => match opt {
+                Some(tok) => tok,
+                None => return Ok(()), // Token and player must have already been deleted.
             },
             Err(e) => {
                 eprintln!("{:?}", e);
                 return Err(DBoError::mongo_driver_error());
+            }
+        };
+
+        if token.used {
+            return Err(DBoError::ConditionNotMet(String::from(
+                "The account has already been confirmed!",
+            )));
+        }
+
+        let _player_deletion = match Player::delete(db, &token.player_id).await {
+            Ok(_) => (),
+            Err(e) => match e {
+                DBoError::NoMatch => (),
+                _ => return Err(e),
+            },
+        };
+
+        let token_deletion = db
+            .collection::<Self>(&Self::collection())
+            .find_one_and_delete(doc! { "token_id": token_id })
+            .await;
+
+        match token_deletion {
+            Ok(option) => match option {
+                Some(token) => match Player::delete(db, &token.player_id).await {
+                    Ok(()) => Ok(()),
+                    Err(e) => match e {
+                        DBoError::MissingDocument => Ok(()),
+                        _ => Err(e),
+                    },
+                },
+                None => Ok(()),
+            },
+            Err(e) => {
+                eprintln!("{:?}", e);
+                Err(DBoError::mongo_driver_error())
             }
         }
     }
