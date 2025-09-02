@@ -12,6 +12,7 @@ dotenvy = "0.15.7"
 jsonwebtoken = "9.3.1"
 lettre = { version = "0.11.18", default-features = false, features = ["builder", "smtp-transport", "tokio1", "tokio1-rustls", "rustls-native-certs", "ring"] }
 mongodb = "3.2.5"
+once_cell = "1.21.3"
 regex = "1.11.1"
 serde = { version = "1.0.219", features = ["derive"] }
 tokio = { version = "1.47.1", features = ["full"] }

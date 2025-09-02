@@ -385,6 +385,7 @@ dependencies = [
  "jsonwebtoken",
  "lettre",
  "mongodb",
+ "once_cell",
  "regex",
  "serde",
  "tokio",
