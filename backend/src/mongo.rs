@@ -1,6 +1,6 @@
 pub mod models;
 
-use std::{env, time::Duration};
+use std::time::Duration;
 
 use mongodb::{
     Client, Database, IndexModel,
@@ -9,7 +9,10 @@ use mongodb::{
 };
 use urlencoding::encode;
 
-use crate::mongo::models::{ConfirmationToken, PingCounter, Player};
+use crate::{
+    environment::ENV,
+    mongo::models::{ConfirmationToken, PingCounter, Player},
+};
 
 /// Returns a standard case-insensitive collation for username operations.
 ///
@@ -119,20 +122,11 @@ async fn index_database(db: &Database) {
 /// If the database connection string is invalid, or if the database cannot be pinged, or if the
 /// database indexes could not be created.
 pub async fn connect() -> Database {
-    let mongo_username = env::var("MONGO_USERNAME")
-        .expect(r#"Environment variable "MONGO_USERNAME" is not configured."#);
-    let mongo_password = env::var("MONGO_PASSWORD")
-        .expect(r#"Environment variable "MONGO_PASSWORD" is not configured."#);
-    let mongo_server = env::var("MONGO_SERVER")
-        .expect(r#"Environment variable "MONGO_SERVER" is not configured."#);
-    let mongo_dbname = env::var("MONGO_DBNAME")
-        .expect(r#"Environment variable "MONGO_DBNAME" is not configured."#);
-
     let mongo_uri = format!(
         "mongodb+srv://{}:{}@{}/?retryWrites=true&w=majority&tls=true",
-        mongo_username,
-        encode(&mongo_password),
-        mongo_server
+        ENV.mongo_username,
+        encode(&ENV.mongo_password),
+        ENV.mongo_server
     );
 
     let mongo_client = Client::with_uri_str(mongo_uri)
@@ -140,7 +134,8 @@ pub async fn connect() -> Database {
         .expect("The mongo_uri string is malformed.");
 
     // This is what we will return from the function to be used as an axum state.
-    let mongo_database = mongo_client.database(&mongo_dbname);
+    let mongo_database = mongo_client.database(&ENV.mongo_dbname);
+
     ping_database(&mongo_database).await;
     index_database(&mongo_database).await;
 
