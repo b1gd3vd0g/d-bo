@@ -3,10 +3,14 @@
 //! The rules for each input field are defined within the specific validation function.
 //!
 //! This module also provides a function to validate all input fields at once, which is the most
-//! concise way to utilize this module's functionality
+//! concise way to utilize this module's functionality.
 
 use regex::Regex;
-use serde::Serialize;
+
+use crate::{
+    errors::{DBoError, DBoResult},
+    handlers::responses::InputValidationResponse,
+};
 
 /// Check a string to make sure that it could be a valid username.
 ///
@@ -24,9 +28,9 @@ use serde::Serialize;
 /// - `input`: The username to be tested
 ///
 /// ### Returns
-/// - `Ok`: The unit type.
-/// - `Err`: A list of problems with the input.
-pub fn validate_username(input: &str) -> Result<(), Vec<String>> {
+/// - `Some`: A list of problems with the input
+/// - `None`: Input is valid
+pub fn validate_username(input: &str) -> Option<Vec<String>> {
     let mut problems: Vec<String> = vec![];
 
     let length = input.len();
@@ -55,8 +59,8 @@ pub fn validate_username(input: &str) -> Result<(), Vec<String>> {
     }
 
     match problems.len() {
-        0 => Ok(()),
-        _ => Err(problems),
+        0 => None,
+        _ => Some(problems),
     }
 }
 
@@ -76,9 +80,9 @@ pub fn validate_username(input: &str) -> Result<(), Vec<String>> {
 /// - `input`: The password to be tested
 ///
 /// ### Returns
-/// - `Ok`: The unit type
-/// - `Err`: A list of problems with the input.
-pub fn validate_password(input: &str) -> Result<(), Vec<String>> {
+/// - `Some`: A list of problems with the input
+/// - `None`: The input is valid
+pub fn validate_password(input: &str) -> Option<Vec<String>> {
     let mut problems: Vec<String> = vec![];
 
     let length = input.len();
@@ -117,8 +121,8 @@ pub fn validate_password(input: &str) -> Result<(), Vec<String>> {
     }
 
     match problems.len() {
-        0 => Ok(()),
-        _ => Err(problems),
+        0 => None,
+        _ => Some(problems),
     }
 }
 
@@ -147,9 +151,9 @@ pub fn validate_password(input: &str) -> Result<(), Vec<String>> {
 /// - `input`: The email address to be tested
 ///
 /// ### Returns
-/// - `Ok`: The unit type
-/// - `Err`: A list of problems with the input.
-pub fn validate_email(input: &str) -> Result<(), Vec<String>> {
+/// - `Some`: A list of problems with the input
+/// - `None`: Input is valid
+pub fn validate_email(input: &str) -> Option<Vec<String>> {
     let mut problems: Vec<String> = vec![];
 
     let parts: Vec<&str> = input.split('@').collect();
@@ -157,7 +161,7 @@ pub fn validate_email(input: &str) -> Result<(), Vec<String>> {
         problems.push(String::from(
             "Email must include a single @ character, separating the prefix and the domain.",
         ));
-        return Err(problems);
+        return Some(problems);
     }
 
     let prefix = parts[0];
@@ -220,31 +224,9 @@ pub fn validate_email(input: &str) -> Result<(), Vec<String>> {
     }
 
     match problems.len() {
-        0 => Ok(()),
-        _ => Err(problems),
+        0 => None,
+        _ => Some(problems),
     }
-}
-
-/// A simple helper function for use in the serialization of InputValidation structs.
-fn is_ok(res: &Result<(), Vec<String>>) -> bool {
-    res.is_ok()
-}
-
-/// Contains the validation information for all input fields at once.\
-///
-/// **Note**: This struct is serializable as it will be returned in the HTTP response body when a
-/// user provides bad input. However, it will only include the fields which **failed validation**
-/// within that serialized version.
-#[derive(Debug, Serialize)]
-pub struct InputValidation {
-    #[serde(skip_serializing_if = "is_ok")]
-    username: Result<(), Vec<String>>,
-
-    #[serde(skip_serializing_if = "is_ok")]
-    password: Result<(), Vec<String>>,
-
-    #[serde(skip_serializing_if = "is_ok")]
-    email: Result<(), Vec<String>>,
 }
 
 /// Check the input to make sure that all fields are valid, according to the defined rules for each
@@ -256,22 +238,23 @@ pub struct InputValidation {
 /// - `email`: The input to test for a valid email address.
 ///
 /// ### Returns:
-/// - `Ok`: The unit type. This signifies that all input has passed validation.
-/// - `Err`: The output of the validation functions for each input. This signifies that **at least
-///   one** input string has failed validation.
-pub fn validate_all(username: &str, password: &str, email: &str) -> Result<(), InputValidation> {
-    let username_validation = validate_username(username);
-    let password_validation = validate_password(password);
-    let email_validation = validate_email(email);
+/// The unit type if all input is valid
+///
+/// ### Errors:
+/// - `DBoError::InvalidPlayerInfo` if even a single field fails validation
+pub fn validate_all(username: &str, password: &str, email: &str) -> DBoResult<()> {
+    let username_problems = validate_username(username);
+    let password_problems = validate_password(password);
+    let email_problems = validate_email(email);
 
-    if username_validation.is_err() || password_validation.is_err() || email_validation.is_err() {
-        Err(InputValidation {
-            username: username_validation,
-            password: password_validation,
-            email: email_validation,
-        })
-    } else {
+    if username_problems.is_none() && password_problems.is_none() && email_problems.is_none() {
         Ok(())
+    } else {
+        Err(DBoError::InvalidPlayerInfo(InputValidationResponse::new(
+            username_problems,
+            password_problems,
+            email_problems,
+        )))
     }
 }
 
@@ -293,10 +276,10 @@ mod tests {
         for username in valid_usernames {
             let result = validate_username(username);
             assert!(
-                result.is_ok(),
+                result.is_none(),
                 "Expected '{}' to be valid, got errors: {:?}",
                 username,
-                result.err()
+                result.unwrap()
             );
         }
 
@@ -316,12 +299,12 @@ mod tests {
             let username = username.to_string(); // ensure owned String if using repeat
             let result = validate_username(&username);
             assert!(
-                result.is_err(),
+                result.is_some(),
                 "Expected '{}' to be invalid, but got ok",
                 username
             );
 
-            if let Err(errors) = result {
+            if let Some(errors) = result {
                 println!("'{}' errors: {:?}", username, errors);
             }
         }
@@ -341,10 +324,10 @@ mod tests {
         for pwd in valid_passwords {
             let result = validate_password(pwd);
             assert!(
-                result.is_ok(),
+                result.is_none(),
                 "Expected '{}' to be valid, got errors: {:?}",
                 pwd,
-                result.err()
+                result.unwrap()
             );
         }
 
@@ -365,12 +348,12 @@ mod tests {
             let pwd = pwd.to_string(); // ensure owned String if using repeat
             let result = validate_password(&pwd);
             assert!(
-                result.is_err(),
+                result.is_some(),
                 "Expected '{}' to be invalid, but got ok",
                 pwd
             );
 
-            if let Err(errors) = result {
+            if let Some(errors) = result {
                 println!("'{}' errors: {:?}", pwd, errors);
             }
         }
@@ -388,7 +371,7 @@ mod tests {
 
         for email in valid_emails {
             assert!(
-                validate_email(email).is_ok(),
+                validate_email(email).is_none(),
                 "Expected '{}' to be valid",
                 email
             );
@@ -414,12 +397,12 @@ mod tests {
         for email in invalid_emails {
             let result = validate_email(email);
             assert!(
-                result.is_err(),
+                result.is_some(),
                 "Expected '{}' to be invalid, but got ok",
                 email
             );
 
-            if let Err(errors) = result {
+            if let Some(errors) = result {
                 println!("'{}' errors: {:?}", email, errors);
             }
         }

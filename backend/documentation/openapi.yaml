@@ -1,0 +1,176 @@
+openapi: 3.1.0
+
+info:
+  title: D-Bo API Documentation
+  version: 0.1.0
+
+servers:
+  - url: https://api.d-bo.bigdevdog.com
+    description: Production server
+  - url: http://localhost:60600
+    description: Local test server
+
+tags:
+  - name: Player Accounts
+    description:
+      These routes have to do with the creation, reading, updating, and deletion of player accounts.
+  - name: Email Verification
+    description: 
+      These endpoints have to do with confirming or rejecting the player email verification.
+
+paths:
+  /players:
+    post:
+      tags:
+        - Player Accounts
+      summary: Create a new player account.
+      description:
+        This endpoint is used when a player is registering a new account for D-Bo.
+      requestBody:
+        description: Provide the proposed username, password, and email for the new account.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  pattern: ^(?!_)(?!.*__)[A-Za-z0-9_]{6,16}$
+                  example: jaeger_dog
+                password:
+                  type: string
+                  pattern: ^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*+=?])[A-Za-z\d!@#$%^&*+=?]{8,32}$
+                  example: thr0wTH3b4ll!
+                email:
+                  type: string
+                  format: email
+                  example: jaeger.dog@bigdevdog.com
+              required:
+                - username
+                - password
+                - email
+      responses:
+        200:
+          description: The player account has been created successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  username:
+                    type: string
+                  email:
+                    type: string
+                  player_id:
+                    type: string
+                required:
+                  - username
+                  - password
+                  - player_id
+                example:
+                  username: jaeger_dog
+                  email: jaeger.dog@bigdevdog.com
+                  player_id: 9334c148-bff1-47b2-9e56-7469b788064e
+        400:
+          description:
+            The account could not be created, because one or more of the fields provided do not meet
+            the set requirements (i.e. password is too short; email address is missing an @ symbol).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  username:
+                    type: array
+                    items: 
+                      type: string
+                  password:
+                    type: array
+                    items:
+                      type: string
+                  email:
+                    type: array
+                    items:
+                      type: string
+                example:
+                  username: 
+                    - Username cannot start with an underscore.
+                    - Username may not contain consecutive underscores.
+                  email:
+                    - Email prefix is empty!
+                    - Email domain includes illegal characters. Allowed characters are letters, numbers, and hyphens.
+                    - Email domain may not include consecutive dots.
+                    - Email top level domain must meet or exceed two characters.
+        409:
+          description:
+            The account could not be created, because the username and/or email address provided 
+            already exist for an active account within the database.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  username:
+                    type: boolean
+                    description: true if the username already exists in the database.
+                  email:
+                    type: boolean
+                    description: true if the email already exists in the database.
+                required:
+                  - username
+                  - email
+                example:
+                  username: false 
+                  email: true
+        422:
+          description:
+            The account could not be created because the request body could not be processed. It
+            could be missing critical fields, or may not be proper JSON.
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: 
+                "Failed to deserialize the JSON body into the target type: missing field `email` at 
+                line 4 column 1"
+        500:
+          $ref: '#/components/responses/ServerSideError'
+
+  /confirmations/{token_id}:
+    post:
+      description: Confirm your email address to start playing D-Bo
+      parameters:
+        - in: path
+          name: token_id
+          schema:
+            type: string
+          required: true
+          description: The token id
+      responses:
+        200:
+          description: Email verified successfully.
+        400:
+          description: The confirmation token has already been used.
+        404:
+          description: 
+            The token could not be found. This could indicate that the URL was typed wrong, but most
+            likely indicates that the token **and** the associated player account have been wiped
+            from the database after two days without confirming. It could also mean that the
+            player's account has already been confirmed. Check the link, and if the link is correct, 
+            try remaking the player account.
+        409:
+          description:
+            The token was found, but the associated player account has been automatically wiped. The
+            player must remake their account from scratch.
+        410:
+          description: 
+            The token has expired. The player must request that the confirmation email be resent.
+        500:
+          $ref: '#/components/responses/ServerSideError'
+
+components:
+  responses:
+    ServerSideError:
+      description: The request could not be completed due to a server-side error.
+      
+
