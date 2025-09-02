@@ -1,5 +1,6 @@
 mod cors;
 mod email;
+mod environment;
 mod errors;
 mod handlers;
 mod hashing;
@@ -10,20 +11,14 @@ mod validation;
 use std::{env, net::SocketAddr};
 
 use dotenvy::dotenv;
+use once_cell::sync::Lazy;
 use tokio::net::TcpListener;
 
-use crate::{cors::cors, router::router};
+use crate::{cors::cors, environment::ENV, router::router};
 
 #[tokio::main]
 async fn main() {
-    // Configure the environment, if necessary.
-    match env::var("STAGE") {
-        Ok(_) => (), // The stage, and presumably all other variables, should already be set.
-        Err(_) => {
-            // The stage is not set externally. This means our stage is development.
-            dotenv().ok();
-        }
-    };
+    Lazy::force(&ENV);
 
     let mongo_database = mongo::connect().await;
     let app = router().with_state(mongo_database).layer(cors());
