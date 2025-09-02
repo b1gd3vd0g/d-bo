@@ -8,9 +8,8 @@ mod mongo;
 mod router;
 mod validation;
 
-use std::{env, net::SocketAddr};
+use std::net::SocketAddr;
 
-use dotenvy::dotenv;
 use once_cell::sync::Lazy;
 use tokio::net::TcpListener;
 
