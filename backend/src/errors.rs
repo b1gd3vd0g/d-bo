@@ -6,6 +6,8 @@ pub enum DBoError {
     /// A document cannot be updated because it does not meet the conditions required for the
     /// proposed operation
     ConditionNotMet(String),
+    /// An operation which should only occur once has been reattempted.
+    IdempotencyError,
     /// A user has tried to create a new account with an invalid field.
     InvalidPlayerInfo(InputValidation),
     /// A query failed because the document that it tries to update or delete could not be found.
