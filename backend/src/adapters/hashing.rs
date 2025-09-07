@@ -52,6 +52,7 @@ pub fn verify_secret(secret: &str, hash: &str) -> Result<bool, DBoError> {
     )
 }
 
+/// Generate a random secret string.
 pub fn generate_secret() -> String {
     let mut bytes = [0u8; 32];
     OsRng.fill_bytes(&mut bytes);
