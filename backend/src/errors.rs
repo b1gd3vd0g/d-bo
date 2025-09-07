@@ -33,6 +33,8 @@ pub enum AdapterKind {
 pub enum DBoError {
     /// An error has occurred within an adapter function.
     AdapterError(AdapterKind),
+    /// The player could not be authenticated.
+    AuthenticationFailure,
     /// A document cannot be updated because it does not meet the conditions required for the
     /// proposed operation
     ConditionNotMet(String),
