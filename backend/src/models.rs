@@ -95,18 +95,6 @@ impl Player {
     pub fn created(&self) -> &DateTime {
         &self.created
     }
-
-    pub fn confirmed(&self) -> bool {
-        self.confirmed
-    }
-
-    pub fn email_verified(&self) -> bool {
-        self.email_verified
-    }
-
-    pub fn proposed_email(&self) -> &Option<String> {
-        &self.proposed_email
-    }
 }
 
 impl Collectible for Player {
@@ -147,18 +135,6 @@ impl ConfirmationToken {
             created: DateTime::now(),
             used: false,
         }
-    }
-
-    pub fn player_id(&self) -> &str {
-        &self.player_id
-    }
-
-    pub fn created(&self) -> &DateTime {
-        &self.created
-    }
-
-    pub fn used(&self) -> bool {
-        self.used
     }
 }
 
