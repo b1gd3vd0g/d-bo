@@ -3,15 +3,18 @@
 use axum::{
     Json,
     extract::State,
-    http::StatusCode,
+    http::{HeaderMap, StatusCode, header::SET_COOKIE},
     response::{IntoResponse, Response},
 };
+use axum_extra::extract::cookie::{Cookie, SameSite};
 
 use crate::{
     adapters::repositories::Repositories,
+    config::environment::ENV,
     errors::DBoError,
     handlers::{
-        request_bodies::PlayerRegistrationRequestBody, responses::ExistingFieldViolationResponse,
+        request_bodies::{PlayerLoginRequestBody, PlayerRegistrationRequestBody},
+        responses::{AccessTokenResponse, ExistingFieldViolationResponse},
     },
     services::player_service::PlayerService,
 };
@@ -59,6 +62,50 @@ pub async fn handle_player_registration(
             DBoError::AdapterError(_) => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
             _ => {
                 eprintln!("An unexpected DBoError occurred during player registration!");
+                eprintln!("This should not happen!");
+                eprintln!("{:?}", e);
+                (StatusCode::INTERNAL_SERVER_ERROR).into_response()
+            }
+        },
+    }
+}
+
+pub async fn handle_player_login(
+    State(repos): State<Repositories>,
+    Json(body): Json<PlayerLoginRequestBody>,
+) -> Response {
+    let outcome = PlayerService::login(
+        repos.players(),
+        repos.refresh_tokens(),
+        &body.username_or_email,
+        &body.password,
+    )
+    .await;
+
+    match outcome {
+        Ok(info) => {
+            let cookie_value = format!("{}:{}", info.refresh_token_id, info.refresh_token_secret);
+            let cookie = Cookie::build(("refresh_token", cookie_value))
+                .http_only(true)
+                .secure(ENV.secure())
+                .same_site(SameSite::Strict)
+                .path("/refresh")
+                .build();
+
+            let mut headers = HeaderMap::new();
+            headers.insert(SET_COOKIE, cookie.to_string().parse().unwrap());
+            (
+                StatusCode::OK,
+                headers,
+                Json(AccessTokenResponse::new(&info.access_token)),
+            )
+                .into_response()
+        }
+        Err(e) => match e {
+            DBoError::AuthenticationFailure => (StatusCode::UNAUTHORIZED).into_response(),
+            DBoError::AdapterError(_) => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
+            _ => {
+                eprintln!("An unexpected DBoError occurred during player login!");
                 eprintln!("This should not happen!");
                 eprintln!("{:?}", e);
                 (StatusCode::INTERNAL_SERVER_ERROR).into_response()
