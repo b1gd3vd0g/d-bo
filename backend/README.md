@@ -67,6 +67,7 @@ For a detailed breakdown of planned steps and progress, see [ROADMAP.md](../ROAD
 | lettre       | 0.11.18 | Email sending via SMTP                     |
 | mongodb      | 3.2.5   | MongoDB driver                             |
 | once_cell    | 1.21.3  | Lazy-loaded values                         |
+| rand         | 0.9.2   | Shuffling cards                            |
 | regex        | 1.11.1  | Regex for validation                       |
 | serde        | 1.0.219 | Serialization and deserialization          |
 | tokio        | 1.47.1  | Async runtime                              |
