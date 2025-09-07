@@ -1,4 +1,4 @@
-pub mod models;
+//! This module handles the configuration of the MongoDB database used by the application.
 
 use std::time::Duration;
 
@@ -10,13 +10,12 @@ use mongodb::{
 use urlencoding::encode;
 
 use crate::{
-    environment::ENV,
-    mongo::models::{ConfirmationToken, PingCounter, Player},
+    config::environment::ENV,
+    models::{Collectible, ConfirmationToken, Player},
 };
 
-/// Returns a standard case-insensitive collation for username operations.
-///
-/// Use this when creating indexes or performing queries that should ignore case differences.
+/// Returns a standard case-insensitive collation, for use while creating database indices, as well
+/// as performing search queries which do not rely on case.
 pub fn case_insensitive_collation() -> Collation {
     Collation::builder()
         .locale("en")
@@ -24,29 +23,7 @@ pub fn case_insensitive_collation() -> Collation {
         .build()
 }
 
-/// "Ping" the database, to ensure that the connection can actually be made. This essentially keeps
-/// track of how many times the application has been restarted (and connected successfully).
-///
-/// ### Arguments
-/// - `db`: The MongoDB database to ping.
-///
-/// ### Panics
-/// If the database query fails. This indicates an unrecoverable problem with our database
-/// connection.
-async fn ping_database(db: &Database) {
-    let filter = doc! { "name": "pings" };
-    let update = doc! { "$inc": { "pings": 1 } };
-
-    // Test to make sure that the connection works.
-    let _ping = db
-        .collection::<PingCounter>("pings")
-        .find_one_and_update(filter, update)
-        .upsert(true)
-        .await
-        .expect("Failed to connect to the mongodb database.");
-}
-
-/// Verify (and if necessary, create) the following indexes on the database:
+/// Verify (and if necessary, create) the following indices on the database:
 ///
 /// - A TTL index on the `confirmation-tokens` collection, so that documents are deleted **two
 ///   days** after their creation
@@ -56,11 +33,14 @@ async fn ping_database(db: &Database) {
 /// - `db`: The MongoDB database
 ///
 /// ### Panics
-/// If the indexes cannot be created. This indicates an unrecoverable problem with our database
+/// If the indices cannot be created. This indicates an unrecoverable problem with our database
 /// connection and/or setup.
+#[doc(hidden)]
 async fn index_database(db: &Database) {
+    // TODO: Fix the database indices. Create more, create them more cleanly, etc. Consider handling
+    // this during repository creation instead of during database connection.
     let _conf_tokens_ttl_index = db
-        .collection::<ConfirmationToken>(&ConfirmationToken::collection())
+        .collection::<ConfirmationToken>(&ConfirmationToken::collection_name())
         .create_index(
             IndexModel::builder()
                 .keys(doc! { "created": 1 })
@@ -73,10 +53,10 @@ async fn index_database(db: &Database) {
                 .build(),
         )
         .await
-        .expect(r#"Could not create the indexes on the "confirmation-tokens" collection"#);
+        .expect(r#"Could not create the indices on the "confirmation-tokens" collection"#);
 
     let _players_indexes = db
-        .collection::<Player>(&Player::collection())
+        .collection::<Player>(&Player::collection_name())
         .create_indexes(vec![
             IndexModel::builder()
                 .keys(doc! { "username": 1 })
@@ -110,18 +90,19 @@ async fn index_database(db: &Database) {
                 .build(),
         ])
         .await
-        .expect(r#"Could not create the indexes on the "players" collection"#);
+        .expect(r#"Could not create the indices on the "players" collection"#);
 }
 
-/// Connect to the MongoDB database housing all of the data for the D-Bo application.
+/// Connect to the MongoDB database housing all of the data for the D-Bo application. This function
+/// should be used to configure the **repository layer** of our application, but otherwise should
+/// not be used by other modules.
 ///
 /// ### Returns
-/// A MongoDB Database, to use as a State in the axum router.
+/// A MongoDB Database
 ///
 /// ### Panics
-/// If the database connection string is invalid, or if the database cannot be pinged, or if the
-/// database indexes could not be created.
-pub async fn connect() -> Database {
+/// If the database connection string is invalid, or if the database indices could not be created.
+pub async fn database() -> Database {
     let mongo_uri = format!(
         "mongodb+srv://{}:{}@{}/?retryWrites=true&w=majority&tls=true",
         ENV.mongo_username,
@@ -136,7 +117,7 @@ pub async fn connect() -> Database {
     // This is what we will return from the function to be used as an axum state.
     let mongo_database = mongo_client.database(&ENV.mongo_dbname);
 
-    ping_database(&mongo_database).await;
+    // ping_database(&mongo_database).await;
     index_database(&mongo_database).await;
 
     mongo_database

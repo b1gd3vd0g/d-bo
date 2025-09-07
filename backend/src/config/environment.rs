@@ -1,18 +1,31 @@
+//! This module provides the lazy variable `ENV` containing all environment variables used within
+//! the application.
+
 use std::env;
 
 use dotenvy::dotenv;
 use once_cell::sync::Lazy;
 
-/// Holds all of the environment variables used within the code.
+/// Holds all of the environment variables used within the application.
 pub struct Environment {
+    /// The secret used for encoding/decoding player authentication JWTs.
     pub authn_token_secret: String,
+    /// The URL to the frontend of the application.\
+    /// Defaults to "http:localhost:5173" in dev environments.
     pub frontend_url: String,
+    /// The username to access the MongoDB database.
     pub mongo_username: String,
+    /// The password to access the MongoDB database.
     pub mongo_password: String,
+    /// The server hosting the MongoDB database.
     pub mongo_server: String,
+    /// The name of the MongoDB database.
     pub mongo_dbname: String,
+    /// The SMTP server used to send outgoing emails.
     pub smtp_host: String,
+    /// The email address that outgoing emails are sent from.
     pub smtp_username: String,
+    /// The password for the SMTP server.
     pub smtp_password: String,
 }
 
@@ -23,6 +36,7 @@ pub struct Environment {
 ///
 /// ### Panics
 /// If the environment variable is undefined.
+#[doc(hidden)]
 fn secret_var(varname: &str) -> String {
     env::var(varname).expect(&format!(
         r#"Environment variable "{}" is not set!"#,
@@ -41,6 +55,7 @@ fn secret_var(varname: &str) -> String {
 ///
 /// ### Panics
 /// If the environment variable is undefined **in a production environment**.
+#[doc(hidden)]
 fn default_var(varname: &str, default: &str) -> String {
     env::var(varname).unwrap_or_else(|_| {
         if cfg!(debug_assertions) {

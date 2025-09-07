@@ -6,7 +6,13 @@
       padding: 0;
     ">
     <header>
-        <h2 style="text-align: center">Welcome to D-Bo, {{USERNAME}}!</h2>
+        <h2 style="text-align: center;">Welcome to D-Bo, {{USERNAME}}!</h2>
+        <img src="cid:{{D_BO_LOGO}}" style="
+            width: 50vw;
+            margin: auto;
+            display: block;
+            max-width: 300px;
+        " />
     </header>
     <main style="padding: 2em">
         <p>
@@ -18,17 +24,23 @@
         <a href="{{FRONTEND_URL}}/confirm-email?token_id={{TOKEN_ID}}" target="_blank" rel="noreferrer"
             style="text-decoration: none">
             <div style="
-            background: lightblue;
-            padding: 1em 2em;
-            width: fit-content;
-            font-weight: bold;
-            border-radius: 1em;
-            margin: auto;
-          ">
+                background: lightblue;
+                padding: 1em 2em;
+                width: fit-content;
+                font-weight: bold;
+                border-radius: 1em;
+                margin: auto;
+            ">
                 Confirm your email
             </div>
         </a>
-        <small style="text-align: center; display: block; margin-top: 2em">
+        <img src="cid:{{BIGDEVDOG_LOGO}}" style="
+            margin: 1em auto;
+            width: 85vw;
+            max-width: 500px;
+            display: block;
+        " />
+        <small style="text-align: center; display: block;">
             D-Bo is a product of
             <a href="https://bigdevdog.com" target="_blank" rel="noreferrer">BigDevDog</a>, an independent development
             company.
