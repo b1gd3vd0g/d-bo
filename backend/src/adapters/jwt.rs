@@ -44,7 +44,7 @@ impl AccessTokenPayload {
 /// - `player_id`: The player's unique identifier
 ///
 /// ### Errors
-/// - `AdapterError(Jwt)` if the token cannot be encoded
+/// - `AdapterError` if the token cannot be encoded
 pub fn generate_access_token(player_id: &str) -> DBoResult<String> {
     let payload = AccessTokenPayload::new(player_id);
     Ok(encode(
@@ -65,7 +65,7 @@ pub fn generate_access_token(player_id: &str) -> DBoResult<String> {
 /// ### Errors
 /// - `TokenExpired` if the token is expired
 /// - `InvalidToken` if the token cannot be decoded because it is bad
-/// - `AdapterError(Jwt)` if the token cannot be decoded due to a server-side error
+/// - `AdapterError` if the token cannot be decoded due to a server-side error
 pub fn decode_access_token(token: &str) -> DBoResult<AccessTokenPayload> {
     Ok(decode::<AccessTokenPayload>(
         token,

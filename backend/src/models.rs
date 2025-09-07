@@ -63,8 +63,8 @@ impl Player {
     /// - `email`: The email address of the new player
     ///
     /// ### Errors
-    /// - `DBoError::InvalidPlayerInput` if the input does not pass validation
-    /// - `DBoError::AdapterError(AdapterKind::Hashing)` if password hashing fails
+    /// - `InvalidPlayerInput` if the input does not pass validation
+    /// - `AdapterError` if password hashing fails
     pub fn new(username: &str, password: &str, email: &str) -> DBoResult<Self> {
         validate_all(username, password, email)?;
 
@@ -209,7 +209,7 @@ impl RefreshToken {
     /// - `secret`: The secret, to be hashed and safely stored in the database.
     ///
     /// ### Errors
-    /// - `AdapterError(Hashing)` if the secret could not be hashed.
+    /// - `AdapterError` if the secret could not be hashed.
     pub fn new(player_id: &str, secret: &str) -> DBoResult<Self> {
         Ok(Self {
             token_id: Uuid::new_v4().to_string(),

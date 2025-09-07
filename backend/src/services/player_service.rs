@@ -33,9 +33,8 @@ impl PlayerService {
     /// - `InvalidPlayerInfo` if the username, password, or email cannot pass validation.
     /// - `UniquenessViolation` if the username or email are not case-insensitively unique.
     /// - `ServerSideError` if the email templates cannot be found.
-    /// - `AdapterError(Database)` if a database query fails.
-    /// - `AdapterError(Hashing)` if the password cannot be hashed (probably impossible).
-    /// - `AdapterError(Smtp)` if the confirmation email could not be sent.
+    /// - `AdapterError` if a database query fails, if the password cannot be hashed, or if the
+    ///   confirmation email could not be sent
     pub async fn register_player(
         players: &Repository<Player>,
         tokens: &Repository<ConfirmationToken>,
@@ -68,9 +67,8 @@ impl PlayerService {
     ///
     /// ### Errors
     /// - `AuthenticationFailure` if the username/email and password do not match our records
-    /// - `AdapterError(Database)` if a database query fails
-    /// - `AdapterError(Hashing)` if the password or refresh token secret cannot be hashed
-    /// - `AdapterError(Jwt)` if the access token cannot be created
+    /// - `AdapterError` if a database query fails, if the password or refresh token
+    ///   secret cannot be hashed, or if the access token cannot be created.
     pub async fn login(
         players: &Repository<Player>,
         tokens: &Repository<RefreshToken>,

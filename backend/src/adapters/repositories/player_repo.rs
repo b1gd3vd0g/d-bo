@@ -18,7 +18,7 @@ impl Repository<Player> {
     /// The player if it can be found
     ///
     /// ### Errors
-    /// - `AdapterError(Database)` if the query fails
+    /// - `AdapterError` if the query fails
     pub async fn find_by_email(&self, email: &str) -> DBoResult<Option<Player>> {
         Ok(self
             .collection
@@ -36,7 +36,7 @@ impl Repository<Player> {
     /// The player if it can be found
     ///
     /// ### Errors
-    /// - `AdapterError(Database)` if the query fails
+    /// - `AdapterError` if the query fails
     pub async fn find_by_username(&self, username: &str) -> DBoResult<Option<Player>> {
         Ok(self
             .collection
@@ -55,7 +55,7 @@ impl Repository<Player> {
     /// The player, if it can be found
     ///
     /// ### Errors
-    /// - `AdapterError(Database)` if the query fails
+    /// - `AdapterError` if the query fails
     pub async fn find_by_username_or_email(
         &self,
         username_or_email: &str,
@@ -80,7 +80,7 @@ impl Repository<Player> {
     /// ### Errors
     /// - `UniquenessViolation` if the player's username or email address are not case-insensitively
     ///   unique.
-    /// - `AdapterError(Database)` if the query fails
+    /// - `AdapterError` if the query fails
     pub async fn insert(&self, player: &Player) -> DBoResult<()> {
         let existing_username = self.find_by_username(player.username()).await?.is_some();
         let existing_email = self.find_by_email(player.email()).await?.is_some();

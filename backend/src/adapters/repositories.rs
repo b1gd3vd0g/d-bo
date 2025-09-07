@@ -51,7 +51,7 @@ impl<T: Model + Send + Sync> Repository<T> {
     /// - `None` if the document does not exist
     ///
     /// ### Errors
-    /// - `AdapterError(Database)` if the query fails
+    /// - `AdapterError` if the query fails
     pub async fn find_by_id(&self, id: &str) -> DBoResult<Option<T>> {
         Ok(self.collection.find_one(doc! { T::id_field(): id }).await?)
     }
@@ -63,7 +63,7 @@ impl<T: Model + Send + Sync> Repository<T> {
     /// - `None` - if the document could not be found
     ///
     /// ### Errors
-    /// - `AdapterError(Database)` if the query fails
+    /// - `AdapterError` if the query fails
     pub async fn delete(&self, id: &str) -> DBoResult<Option<T>> {
         Ok(self
             .collection
@@ -77,7 +77,7 @@ impl<T: Model + Send + Sync> Repository<T> {
     /// The number of present documents
     ///
     /// ### Errors
-    /// - `AdapterError(Database)` if the query fails
+    /// - `AdapterError` if the query fails
     pub async fn count(&self) -> DBoResult<u64> {
         Ok(self.collection.count_documents(doc! {}).await?)
     }
@@ -90,7 +90,7 @@ impl<T: Model + Send + Sync + Unconstrained> Repository<T> {
     /// - `document`: The document to be inserted.
     ///
     /// ### Errors
-    /// `AdapterError(Database)` if the query fails.
+    /// `AdapterError` if the query fails.
     pub async fn insert(&self, document: &T) -> DBoResult<()> {
         self.collection.insert_one(document).await?;
         Ok(())

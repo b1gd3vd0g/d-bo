@@ -20,7 +20,7 @@ use crate::errors::DBoError;
 /// The secure hash to store in the database.
 ///
 /// ### Errors
-/// - `AdapterError(Hashing)` indicating that the provided secret cannot be hashed.
+/// - `AdapterError` indicating that the provided secret cannot be hashed.
 pub fn hash_secret(secret: &str) -> Result<String, DBoError> {
     let salt = SaltString::generate(&mut OsRng);
 
@@ -39,7 +39,7 @@ pub fn hash_secret(secret: &str) -> Result<String, DBoError> {
 /// A boolean indicating whether or not the provided secret matches the hash.
 ///
 /// ### Errors
-/// - `AdapterError(Hashing)` indicating that the provided hash could not be parsed. This could
+/// - `AdapterError` indicating that the provided hash could not be parsed. This could
 ///   indicate a fatal error within our database!
 pub fn verify_secret(secret: &str, hash: &str) -> Result<bool, DBoError> {
     let parsed_hash = PasswordHash::new(hash)?;

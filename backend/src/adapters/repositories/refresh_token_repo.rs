@@ -15,7 +15,7 @@ impl Repository<RefreshToken> {
     /// - `token`: The refresh token to insert.
     ///
     /// ### Errors
-    /// - `AdapterError(Database)` if a query fails.
+    /// - `AdapterError` if a query fails.
     pub async fn insert(&self, token: &RefreshToken) -> DBoResult<()> {
         self.collection.insert_one(token).await?;
 
@@ -40,8 +40,8 @@ impl Repository<RefreshToken> {
     /// - `player_id`: The player's unique identifier
     ///
     /// ### Errors
-    /// - `AdapterError(Database)` if the query fails, or a found document cannot be parsed into a
-    ///   Refresh Token.
+    /// - `AdapterError` if the query fails, or a found document cannot be parsed into a
+    ///   RefreshToken.
     async fn find_player_tokens(&self, player_id: &str) -> DBoResult<Vec<RefreshToken>> {
         let mut tokens: Vec<RefreshToken> = vec![];
 

@@ -41,7 +41,7 @@ fn fill_confirmation_template(template: &str, username: &str, token_id: &str) ->
 ///
 /// ### Errors
 /// - `ServerSideError`: if the email template files cannot be found.
-/// - `AdapterError(Smtp)`: if the email cannot be constructed or sent.
+/// - `AdapterError`: if the email cannot be constructed or sent.
 pub async fn send_confirmation_email(
     player_email: &str,
     username: &str,
