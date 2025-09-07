@@ -21,6 +21,8 @@ pub struct Environment {
     pub mongo_server: String,
     /// The name of the MongoDB database.
     pub mongo_dbname: String,
+    /// HTTP or HTTPS?
+    pub protocol: String,
     /// The SMTP server used to send outgoing emails.
     pub smtp_host: String,
     /// The email address that outgoing emails are sent from.
@@ -86,10 +88,15 @@ impl Environment {
             mongo_password: secret_var("MONGO_PASSWORD"),
             mongo_server: secret_var("MONGO_SERVER"),
             mongo_dbname: secret_var("MONGO_DBNAME"),
+            protocol: default_var("PROTOCOL", "HTTP"),
             smtp_host: secret_var("SMTP_HOST"),
             smtp_username: secret_var("SMTP_USERNAME"),
             smtp_password: secret_var("SMTP_PASSWORD"),
         }
+    }
+
+    pub fn secure(&self) -> bool {
+        self.protocol == "HTTPS"
     }
 }
 
