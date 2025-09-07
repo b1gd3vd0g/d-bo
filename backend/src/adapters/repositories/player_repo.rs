@@ -43,6 +43,21 @@ impl Repository<Player> {
             .await?)
     }
 
+    pub async fn find_by_username_or_email(
+        &self,
+        username_or_email: &str,
+    ) -> DBoResult<Option<Player>> {
+        Ok(self
+            .collection
+            .find_one(doc! {
+                "$or": [
+                    { "username": username_or_email },
+                    { "email": username_or_email }
+                ]
+            })
+            .await?)
+    }
+
     /// Insert a new player into the database.
     ///
     /// ### Arguments
