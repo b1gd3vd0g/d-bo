@@ -2,8 +2,12 @@
 
 use argon2::{
     Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
-    password_hash::{SaltString, rand_core::OsRng},
+    password_hash::{
+        SaltString,
+        rand_core::{OsRng, RngCore},
+    },
 };
+use base64::{Engine, engine::general_purpose};
 
 use crate::errors::DBoError;
 
@@ -46,4 +50,10 @@ pub fn verify_secret(secret: &str, hash: &str) -> Result<bool, DBoError> {
             Err(_) => false,
         },
     )
+}
+
+pub fn generate_secret() -> String {
+    let mut bytes = [0u8; 32];
+    OsRng.fill_bytes(&mut bytes);
+    general_purpose::URL_SAFE_NO_PAD.encode(&bytes)
 }
