@@ -5,5 +5,6 @@
 
 pub mod email;
 pub mod hashing;
+pub mod jwt;
 pub mod mongo;
 pub mod repositories;
