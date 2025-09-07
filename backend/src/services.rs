@@ -6,3 +6,4 @@
 //! by the handlers.
 
 pub mod player_service;
+pub mod types;
