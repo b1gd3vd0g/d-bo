@@ -8,6 +8,14 @@ use crate::{
 };
 
 impl Repository<RefreshToken> {
+    /// Insert a new RefreshToken into the database. If there are more than three refresh tokens
+    /// for the player, delete the oldest ones until there are only three.
+    ///
+    /// ### Arguments
+    /// - `token`: The refresh token to insert.
+    ///
+    /// ### Errors
+    /// - `AdapterError(Database)` if a query fails.
     pub async fn insert(&self, token: &RefreshToken) -> DBoResult<()> {
         self.collection.insert_one(token).await?;
 
@@ -26,6 +34,14 @@ impl Repository<RefreshToken> {
         Ok(())
     }
 
+    /// Find all refresh tokens associated with a player account.
+    ///
+    /// ### Arguments
+    /// - `player_id`: The player's unique identifier
+    ///
+    /// ### Errors
+    /// - `AdapterError(Database)` if the query fails, or a found document cannot be parsed into a
+    ///   Refresh Token.
     async fn find_player_tokens(&self, player_id: &str) -> DBoResult<Vec<RefreshToken>> {
         let mut tokens: Vec<RefreshToken> = vec![];
 
