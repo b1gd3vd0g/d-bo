@@ -91,3 +91,16 @@ impl SafePlayerResponse {
         }
     }
 }
+
+#[derive(Serialize)]
+pub struct AccessTokenResponse {
+    access_token: String,
+}
+
+impl AccessTokenResponse {
+    pub fn new(access_token: &str) -> Self {
+        Self {
+            access_token: String::from(access_token),
+        }
+    }
+}
