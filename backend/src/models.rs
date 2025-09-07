@@ -209,6 +209,57 @@ impl Identifiable for Counter {
     }
 }
 
+/// A document representing a refresh token, which can validate a player whose access token has
+/// expired for up to 7 days.
+pub struct RefreshToken {
+    /// A unique UUID v4 to identify the token
+    token_id: String,
+    /// The unique identifier of the player represented by this token
+    player_id: String,
+    /// The hashed secret to store in the database
+    secret: String,
+    /// The time at which the refresh token was created
+    created: DateTime,
+    /// Indicates whether or not the token has been revoked
+    revoked: bool,
+}
+
+impl RefreshToken {
+    /// Construct a new refresh token.
+    ///
+    /// ### Arguments
+    /// - `player_id`: The represented player's unique identifier.
+    /// - `secret`: The secret, to be hashed and safely stored in the database.
+    ///
+    /// ### Errors
+    /// - `AdapterError(Hashing)` if the secret could not be hashed.
+    pub fn new(player_id: &str, secret: &str) -> DBoResult<Self> {
+        Ok(Self {
+            token_id: Uuid::new_v4().to_string(),
+            player_id: String::from(player_id),
+            secret: hash_secret(secret)?,
+            created: DateTime::now(),
+            revoked: false,
+        })
+    }
+}
+
+impl Collectible for RefreshToken {
+    fn collection_name() -> &'static str {
+        "refresh-tokens"
+    }
+}
+
+impl Identifiable for RefreshToken {
+    fn id(&self) -> &str {
+        &self.token_id
+    }
+
+    fn id_field() -> &'static str {
+        "token_id"
+    }
+}
+
 /// A composite trait that is required for any database model. Any struct implementing these traits
 /// will automatically receive the trait `Model`.
 pub trait Model: Collectible + Identifiable + Serialize + for<'de> Deserialize<'de> {}
