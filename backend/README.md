@@ -53,24 +53,25 @@ For a detailed breakdown of planned steps and progress, see [ROADMAP.md](../ROAD
 
 ## Dependencies
 
-| Crate        | Version | Purpose                                 |
-| ------------ | ------- | --------------------------------------- |
-| argon2       | 0.5.3   | Secure password hashing                 |
-| axum         | 0.8.4   | Web framework for REST API              |
-| base64       | 0.22.1  | Base 64 encoding                        |
-| bson         | 2.15.0  | BSON support with Chrono integration    |
-| chrono       | 0.4.41  | Date/time handling with Serde           |
-| dotenvy      | 0.15.7  | Environment variable loading            |
-| jsonwebtoken | 9.3.1   | JWT creation and validation (HS256)     |
-| lettre       | 0.11.18 | Email sending via SMTP                  |
-| mongodb      | 3.2.5   | MongoDB driver                          |
-| once_cell    | 1.21.3  | Lazy-loaded values                      |
-| regex        | 1.11.1  | Regex for validation                    |
-| serde        | 1.0.219 | Serialization and deserialization       |
-| tokio        | 1.47.1  | Async runtime                           |
-| tower-http   | 0.6.6   | Middleware (CORS support)               |
-| urlencoding  | 2.1.3   | URL encoding/decoding                   |
-| uuid         | 1.18.0  | UUID generation (v4) with Serde support |
+| Crate        | Version | Purpose                                    |
+| ------------ | ------- | ------------------------------------------ |
+| argon2       | 0.5.3   | Secure password hashing                    |
+| axum         | 0.8.4   | Web framework for REST API                 |
+| base64       | 0.22.1  | Base 64 encoding                           |
+| bson         | 2.15.0  | BSON support with Chrono integration       |
+| chrono       | 0.4.41  | Date/time handling with Serde              |
+| dotenvy      | 0.15.7  | Environment variable loading               |
+| futures      | 0.3.31  | Async traits for iterating mongodb cursors |
+| jsonwebtoken | 9.3.1   | JWT creation and validation (HS256)        |
+| lettre       | 0.11.18 | Email sending via SMTP                     |
+| mongodb      | 3.2.5   | MongoDB driver                             |
+| once_cell    | 1.21.3  | Lazy-loaded values                         |
+| regex        | 1.11.1  | Regex for validation                       |
+| serde        | 1.0.219 | Serialization and deserialization          |
+| tokio        | 1.47.1  | Async runtime                              |
+| tower-http   | 0.6.6   | Middleware (CORS support)                  |
+| urlencoding  | 2.1.3   | URL encoding/decoding                      |
+| uuid         | 1.18.0  | UUID generation (v4) with Serde support    |
 
 ---
 
