@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
-    adapters::hashing::hash_password, errors::DBoResult, models::player_validation::validate_all,
+    adapters::hashing::hash_secret, errors::DBoResult, models::player_validation::validate_all,
 };
 
 /// A trait for all Models that are stored in a specific collection.
@@ -71,7 +71,7 @@ impl Player {
         Ok(Self {
             player_id: Uuid::new_v4().to_string(),
             username: String::from(username),
-            password: hash_password(password)?,
+            password: hash_secret(password)?,
             email: String::from(email),
             created: DateTime::now(),
             confirmed: false,
