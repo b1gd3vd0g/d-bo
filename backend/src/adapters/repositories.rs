@@ -14,13 +14,15 @@ mod confirmation_token_repo;
 mod counters_repo;
 #[doc(hidden)]
 mod player_repo;
+#[doc(hidden)]
+mod refresh_token_repo;
 
 use mongodb::{Collection, bson::doc};
 
 use crate::{
     adapters::mongo::database,
     errors::DBoResult,
-    models::{Collectible, ConfirmationToken, Counter, Model, Player, Unconstrained},
+    models::{Collectible, ConfirmationToken, Counter, Model, Player, RefreshToken, Unconstrained},
 };
 
 /// An interface over a database collection which handles all database interactions related to a
@@ -104,6 +106,7 @@ pub struct Repositories {
     counters: Repository<Counter>,
     /// The repository handling player accounts.
     players: Repository<Player>,
+    refresh_tokens: Repository<RefreshToken>,
 }
 
 impl Repositories {
@@ -115,10 +118,13 @@ impl Repositories {
         let db = database().await;
         Self {
             confirmation_tokens: Repository::<ConfirmationToken>::new(
-                db.collection(&ConfirmationToken::collection_name()),
+                db.collection(ConfirmationToken::collection_name()),
             ),
             counters: Repository::<Counter>::new(db.collection(&Counter::collection_name())),
             players: Repository::<Player>::new(db.collection(&Player::collection_name())),
+            refresh_tokens: Repository::<RefreshToken>::new(
+                db.collection(RefreshToken::collection_name()),
+            ),
         }
     }
 
@@ -135,5 +141,9 @@ impl Repositories {
     /// Return the players repository.
     pub fn players(&self) -> &Repository<Player> {
         &self.players
+    }
+
+    pub fn refresh_tokens(&self) -> &Repository<RefreshToken> {
+        &self.refresh_tokens
     }
 }
