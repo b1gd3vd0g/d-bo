@@ -15,45 +15,17 @@ use mongodb::error::Error as MongoError;
 
 use crate::handlers::responses::InputValidationResponse;
 
-/// Indicates the type of AdapterError that has occurred.
-#[derive(Debug)]
-pub enum AdapterKind {
-    /// An error has occurred while querying the database.
-    Database,
-    /// An error has occurred while sending an email.
-    Email,
-    /// An error has occurred while hashing a password.
-    Hashing,
-    /// An error has occurred while encoding or decoding a JWT.
-    Jwt,
-}
-
 /// Encompasses all possible errors that may occur within the D-Bo application.
 #[derive(Debug)]
 pub enum DBoError {
     /// An error has occurred within an adapter function.
-    AdapterError(AdapterKind),
+    AdapterError,
     /// The player could not be authenticated.
     AuthenticationFailure,
-    /// A document cannot be updated because it does not meet the conditions required for the
-    /// proposed operation
-    ConditionNotMet(String),
-    /// An operation which should only occur once has been reattempted.
-    IdempotencyError,
     /// A user has tried to create a new account with an invalid field.
     InvalidPlayerInfo(InputValidationResponse),
     /// A provided token is invalid.
     InvalidToken,
-    /// A query failed because the document that it tries to update or delete could not be found.
-    MissingDocument,
-    /// A **search** query returned no results.
-    NoMatch,
-    /// The password provided does not match the records in the database.
-    PasswordMismatch,
-    /// A document cannot be created, because it conflicts with the current state of the database.
-    /// For example, this could happen when a confirmation token is created, but it does not
-    /// correspond with a valid, active player account.
-    RelationalConflict(String),
     /// Some kind of token (be it an email confirmation token, JWT, etc.) is expired.
     TokenExpired,
     /// A user has tried to create a new account, but its unique fields are already in use.
@@ -65,7 +37,7 @@ impl From<HashingError> for DBoError {
     fn from(e: HashingError) -> Self {
         eprintln!("A HashingError has occurred!");
         eprintln!("{:?}", e);
-        Self::AdapterError(AdapterKind::Hashing)
+        Self::AdapterError
     }
 }
 
@@ -73,7 +45,7 @@ impl From<MongoError> for DBoError {
     fn from(e: MongoError) -> Self {
         eprintln!("A MongoDB driver error has occurred.");
         eprintln!("{:?}", e);
-        Self::AdapterError(AdapterKind::Database)
+        Self::AdapterError
     }
 }
 
@@ -81,7 +53,7 @@ impl From<SmtpError> for DBoError {
     fn from(e: SmtpError) -> Self {
         eprintln!("An SMTP error has occurred!");
         eprintln!("{:?}", e);
-        Self::AdapterError(AdapterKind::Email)
+        Self::AdapterError
     }
 }
 
@@ -89,7 +61,7 @@ impl From<LettreError> for DBoError {
     fn from(e: LettreError) -> Self {
         eprintln!("A Lettre error has occurred!");
         eprintln!("{:?}", e);
-        Self::AdapterError(AdapterKind::Email)
+        Self::AdapterError
     }
 }
 
@@ -108,7 +80,7 @@ impl From<JwtError> for DBoError {
             _ => {
                 eprintln!("An unexpected JWT error has occurred!");
                 eprintln!("{:?}", e);
-                Self::AdapterError(AdapterKind::Jwt)
+                Self::AdapterError
             }
         }
     }

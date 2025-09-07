@@ -59,7 +59,7 @@ pub async fn handle_player_registration(
                 Json(ExistingFieldViolationResponse::new(username, email)),
             )
                 .into_response(),
-            DBoError::AdapterError(_) => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
+            DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
             _ => {
                 eprintln!("An unexpected DBoError occurred during player registration!");
                 eprintln!("This should not happen!");
@@ -103,7 +103,7 @@ pub async fn handle_player_login(
         }
         Err(e) => match e {
             DBoError::AuthenticationFailure => (StatusCode::UNAUTHORIZED).into_response(),
-            DBoError::AdapterError(_) => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
+            DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
             _ => {
                 eprintln!("An unexpected DBoError occurred during player login!");
                 eprintln!("This should not happen!");
