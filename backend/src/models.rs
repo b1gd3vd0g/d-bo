@@ -211,6 +211,7 @@ impl Identifiable for Counter {
 
 /// A document representing a refresh token, which can validate a player whose access token has
 /// expired for up to 7 days.
+#[derive(Clone, Deserialize, Serialize)]
 pub struct RefreshToken {
     /// A unique UUID v4 to identify the token
     token_id: String,
@@ -241,6 +242,10 @@ impl RefreshToken {
             created: DateTime::now(),
             revoked: false,
         })
+    }
+
+    pub fn player_id(&self) -> &str {
+        &self.player_id
     }
 }
 
