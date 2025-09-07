@@ -9,6 +9,7 @@
 //! annotations.
 
 use argon2::password_hash::Error as HashingError;
+use jsonwebtoken::errors::{Error as JwtError, ErrorKind as JwtErrorKind};
 use lettre::{error::Error as LettreError, transport::smtp::Error as SmtpError};
 use mongodb::error::Error as MongoError;
 
@@ -19,10 +20,12 @@ use crate::handlers::responses::InputValidationResponse;
 pub enum AdapterKind {
     /// An error has occurred while querying the database.
     Database,
+    /// An error has occurred while sending an email.
+    Email,
     /// An error has occurred while hashing a password.
     Hashing,
-    /// An error has occurred while sending an email.
-    Smtp,
+    /// An error has occurred while encoding or decoding a JWT.
+    Jwt,
 }
 
 /// Encompasses all possible errors that may occur within the D-Bo application.
@@ -37,6 +40,8 @@ pub enum DBoError {
     IdempotencyError,
     /// A user has tried to create a new account with an invalid field.
     InvalidPlayerInfo(InputValidationResponse),
+    /// A provided token is invalid.
+    InvalidToken,
     /// A query failed because the document that it tries to update or delete could not be found.
     MissingDocument,
     /// A **search** query returned no results.
@@ -47,22 +52,11 @@ pub enum DBoError {
     /// For example, this could happen when a confirmation token is created, but it does not
     /// correspond with a valid, active player account.
     RelationalConflict(String),
-    /// A server-side error has occurred. These are very unlikely, but not impossible. The String
-    /// should contain a brief description of what went wrong. These strings should NOT be passed to
-    /// the user within the HTTP request body, but instead should be logged using the eprintln!
-    /// macro.
-    ServerSideError(String),
     /// Some kind of token (be it an email confirmation token, JWT, etc.) is expired.
     TokenExpired,
     /// A user has tried to create a new account, but its unique fields are already in use.
     /// The first boolean represents a username violation, the second represents the email.
     UniquenessViolation(bool, bool),
-}
-
-impl DBoError {
-    pub fn mongo_driver_error() -> Self {
-        Self::ServerSideError(String::from("There was an error with the MongoDB driver."))
-    }
 }
 
 impl From<HashingError> for DBoError {
@@ -85,7 +79,7 @@ impl From<SmtpError> for DBoError {
     fn from(e: SmtpError) -> Self {
         eprintln!("An SMTP error has occurred!");
         eprintln!("{:?}", e);
-        Self::AdapterError(AdapterKind::Smtp)
+        Self::AdapterError(AdapterKind::Email)
     }
 }
 
@@ -93,7 +87,28 @@ impl From<LettreError> for DBoError {
     fn from(e: LettreError) -> Self {
         eprintln!("A Lettre error has occurred!");
         eprintln!("{:?}", e);
-        Self::AdapterError(AdapterKind::Smtp)
+        Self::AdapterError(AdapterKind::Email)
+    }
+}
+
+impl From<JwtError> for DBoError {
+    fn from(e: JwtError) -> Self {
+        match e.kind() {
+            JwtErrorKind::ExpiredSignature => Self::TokenExpired,
+
+            JwtErrorKind::InvalidToken
+            | JwtErrorKind::InvalidSignature
+            | JwtErrorKind::InvalidIssuer
+            | JwtErrorKind::InvalidAudience
+            | JwtErrorKind::InvalidSubject
+            | JwtErrorKind::InvalidAlgorithm => Self::InvalidToken,
+
+            _ => {
+                eprintln!("An unexpected JWT error has occurred!");
+                eprintln!("{:?}", e);
+                Self::AdapterError(AdapterKind::Jwt)
+            }
+        }
     }
 }
 
