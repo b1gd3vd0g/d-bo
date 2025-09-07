@@ -15,9 +15,10 @@ impl Repository<Player> {
     /// - `email`: The email address to search for (complete and case-insensitive)
     ///
     /// ### Returns
-    /// - `Some(player)` if the player was found
-    /// - `None` if the player was not found
-    /// - `AdapterError(Database)` if the query failed
+    /// The player if it can be found
+    ///
+    /// ### Errors
+    /// - `AdapterError(Database)` if the query fails
     pub async fn find_by_email(&self, email: &str) -> DBoResult<Option<Player>> {
         Ok(self
             .collection
@@ -32,9 +33,10 @@ impl Repository<Player> {
     /// - `username`: The username to search for (unique and case-insensitive)
     ///
     /// ### Returns
-    /// - `Some(player)` if the player was found
-    /// - `None` if the player was not found
-    /// - `AdapterError(Database)` if the query failed
+    /// The player if it can be found
+    ///
+    /// ### Errors
+    /// - `AdapterError(Database)` if the query fails
     pub async fn find_by_username(&self, username: &str) -> DBoResult<Option<Player>> {
         Ok(self
             .collection
@@ -43,6 +45,17 @@ impl Repository<Player> {
             .await?)
     }
 
+    /// Find a player by their username *or* email address.
+    ///
+    /// ### Arguments
+    /// - `username_or_email`: The username/email address to search for (unique and
+    ///   case-insensitive)
+    ///
+    /// ### Returns
+    /// The player, if it can be found
+    ///
+    /// ### Errors
+    /// - `AdapterError(Database)` if the query fails
     pub async fn find_by_username_or_email(
         &self,
         username_or_email: &str,
@@ -55,6 +68,7 @@ impl Repository<Player> {
                     { "email": username_or_email }
                 ]
             })
+            .collation(case_insensitive_collation())
             .await?)
     }
 
