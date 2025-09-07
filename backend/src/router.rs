@@ -4,7 +4,8 @@ use axum::{Router, routing::post};
 use tower_http::cors::{Any, CorsLayer};
 
 use crate::{
-    adapters::repositories::Repositories, handlers::player_handlers::handle_player_registration,
+    adapters::repositories::Repositories,
+    handlers::player_handlers::{handle_player_login, handle_player_registration},
 };
 
 /// Return the CORS configuration for the application.
@@ -20,5 +21,6 @@ fn cors() -> CorsLayer {
 pub fn router() -> Router<Repositories> {
     Router::new()
         .route("/players", post(handle_player_registration))
+        .route("/players/login", post(handle_player_login))
         .layer(cors())
 }
