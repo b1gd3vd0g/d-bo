@@ -1,5 +1,6 @@
 //! This module defines all JSON response bodies that may be returned by the HTTP handler functions.
 
+use chrono::{DateTime, Utc};
 use serde::Serialize;
 
 use crate::models::{Identifiable, Player};
@@ -76,6 +77,7 @@ pub struct SafePlayerResponse {
     username: String,
     /// The player's email address
     email: String,
+    created: DateTime<Utc>,
 }
 
 impl SafePlayerResponse {
@@ -88,6 +90,7 @@ impl SafePlayerResponse {
             player_id: String::from(player.id()),
             username: String::from(player.username()),
             email: String::from(player.email()),
+            created: player.created().to_chrono(),
         }
     }
 }
