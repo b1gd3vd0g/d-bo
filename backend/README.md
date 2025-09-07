@@ -57,6 +57,7 @@ For a detailed breakdown of planned steps and progress, see [ROADMAP.md](../ROAD
 | ------------ | ------- | --------------------------------------- |
 | argon2       | 0.5.3   | Secure password hashing                 |
 | axum         | 0.8.4   | Web framework for REST API              |
+| base64       | 0.22.1  | Base 64 encoding                        |
 | bson         | 2.15.0  | BSON support with Chrono integration    |
 | chrono       | 0.4.41  | Date/time handling with Serde           |
 | dotenvy      | 0.15.7  | Environment variable loading            |
