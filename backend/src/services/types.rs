@@ -1,7 +1,7 @@
 pub struct LoginTokenInfo {
-    access_token: String,
-    refresh_token_id: String,
-    refresh_token_secret: String,
+    pub access_token: String,
+    pub refresh_token_id: String,
+    pub refresh_token_secret: String,
 }
 
 impl LoginTokenInfo {
