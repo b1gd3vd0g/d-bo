@@ -48,6 +48,8 @@ function LoginForm({ setChoice }: WelcomeFormProps) {
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
 
+  console.log(username, password);
+
   return (
     <>
       <button
@@ -67,6 +69,8 @@ function RegisterForm({ setChoice }: WelcomeFormProps) {
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [email, setEmail] = useState<string>('');
+
+  console.log(username, password, email);
 
   return (
     <>
