@@ -35,3 +35,18 @@ export function SecondaryButton({
     </button>
   );
 }
+
+interface BackButtonProps {
+  onClick: () => void;
+}
+
+export function BackButton({ onClick }: BackButtonProps) {
+  return (
+    <button
+      className='text-fg-2 border-border block rounded-lg border px-3 py-1 text-2xl'
+      onClick={onClick}
+    >
+      {'<'}
+    </button>
+  );
+}
