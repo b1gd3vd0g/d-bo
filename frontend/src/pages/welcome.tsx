@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FormGroup } from '../reusable/form';
 import { Box } from '../reusable/containers';
+import { PrimaryButton, SecondaryButton } from '../reusable/buttons';
 
 type UserChoice = 'undecided' | 'login' | 'register';
 
@@ -25,7 +26,11 @@ export default function WelcomePage() {
 
   return (
     <>
-      <h1>Welcome to D-Bo!</h1>
+      <h1 className='pt-12'>Welcome to D-Bo!</h1>
+      <p className='mx-auto my-4 w-4/5 text-center'>
+        D-Bo is an online space where players can connect with each other and
+        play a classic card game together in real time.
+      </p>
       <Box className='m-auto'>{form}</Box>
     </>
   );
@@ -34,12 +39,12 @@ export default function WelcomePage() {
 function ChoiceForm({ setChoice }: WelcomeFormProps) {
   return (
     <>
-      <button className='w-1/1' onClick={() => setChoice('login')}>
+      <PrimaryButton className='w-1/1' onClick={() => setChoice('login')}>
         Log in
-      </button>
-      <button className='bg-accent-2' onClick={() => setChoice('register')}>
+      </PrimaryButton>
+      <SecondaryButton onClick={() => setChoice('register')}>
         Create a new account
-      </button>
+      </SecondaryButton>
     </>
   );
 }

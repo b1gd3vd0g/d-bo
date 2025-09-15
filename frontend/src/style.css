@@ -36,8 +36,8 @@
     @apply text-xl;
   }
 
-  button {
-    @apply bg-accent-1 text-fg-2 mx-auto my-4 block rounded-xl px-4 py-2 text-2xl;
+  p {
+    @apply text-xl;
   }
 
   input,
