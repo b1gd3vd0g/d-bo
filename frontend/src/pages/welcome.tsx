@@ -34,10 +34,10 @@ export default function WelcomePage() {
 function ChoiceForm({ setChoice }: WelcomeFormProps) {
   return (
     <>
-      <button className='block' onClick={() => setChoice('login')}>
+      <button className='w-1/1' onClick={() => setChoice('login')}>
         Log in
       </button>
-      <button className='block' onClick={() => setChoice('register')}>
+      <button className='bg-accent-2' onClick={() => setChoice('register')}>
         Create a new account
       </button>
     </>
