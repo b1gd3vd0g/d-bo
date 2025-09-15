@@ -2,7 +2,7 @@ export function ConfirmEmailPage() {
   return (
     <>
       <h4>Confirm your email address to start playing D-Bo!</h4>
-      <button className='block mx-auto'>Confirm email</button>
+      <button className='mx-auto block'>Confirm email</button>
     </>
   );
 }
@@ -16,7 +16,7 @@ export function RejectEmailPage() {
         this is a mistake, use the button below to remove all information from
         our databases.
       </p>
-      <button className='block mx-auto'>Remove account</button>
+      <button className='mx-auto block'>Remove account</button>
     </>
   );
 }

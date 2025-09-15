@@ -9,7 +9,7 @@ interface ContainerProps {
  */
 export function Box({ children, className = '' }: ContainerProps) {
   return (
-    <div className={`w-fit p-2 bg-gray-400 rounded-md ${className}`}>
+    <div className={`w-fit rounded-md bg-gray-400 p-2 ${className}`}>
       {children}
     </div>
   );
