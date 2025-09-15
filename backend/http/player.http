@@ -8,3 +8,15 @@ Content-Type: application/json
     "password": "#P455w0rd!",
     "email": "test_user_1@mail.com"
 }
+
+###
+
+# Test login
+
+POST http://localhost:60600/players/login HTTP/1.1
+Content-Type: application/json
+
+{
+    "username_or_emai": "TeSt_UsEr_1",
+    "password": "#P455w0rd!"
+}
