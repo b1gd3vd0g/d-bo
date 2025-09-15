@@ -21,23 +21,23 @@
 
 @layer base {
   h1 {
-    @apply text-center text-5xl;
+    @apply py-4 text-center text-4xl;
   }
 
   h2 {
-    @apply text-4xl;
-  }
-
-  h3 {
     @apply text-3xl;
   }
 
-  h4 {
+  h3 {
     @apply text-2xl;
   }
 
+  h4 {
+    @apply text-xl;
+  }
+
   button {
-    @apply mx-auto my-2 rounded-md bg-blue-300 px-2 py-1;
+    @apply bg-accent-1 text-fg-2 mx-auto my-4 block rounded-xl px-4 py-2 text-2xl;
   }
 
   input,
