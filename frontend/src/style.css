@@ -1,8 +1,27 @@
 @import 'tailwindcss';
 
+@font-face {
+  font-family: 'vt323';
+  src: url('assets/fonts/vt323/VT323-Regular.ttf') format('truetype');
+}
+
+@theme {
+  --font-vt323: 'vt323', monospace;
+
+  --color-primary: #1c1c1c;
+  --color-secondary: #2a2a2a;
+  --color-border: #d0d0d0;
+  --color-fg-1: #f4f4f4;
+  --color-fg-2: #ffffff;
+  --color-positive: #40ac3e;
+  --color-negative: #ac3e3e;
+  --color-accent-1: #583eac;
+  --color-accent-2: #8e4585;
+}
+
 @layer base {
   h1 {
-    @apply text-5xl text-center;
+    @apply text-center text-5xl;
   }
 
   h2 {
@@ -18,11 +37,11 @@
   }
 
   button {
-    @apply my-2 mx-auto px-2 py-1 bg-blue-300 rounded-md;
+    @apply mx-auto my-2 rounded-md bg-blue-300 px-2 py-1;
   }
 
   input,
   textarea {
-    @apply w-full rounded-md border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring resize-none;
+    @apply w-full resize-none rounded-md border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring;
   }
 }
