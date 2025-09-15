@@ -89,7 +89,7 @@ pub async fn handle_player_login(
                 .http_only(true)
                 .secure(ENV.secure())
                 .same_site(SameSite::Strict)
-                .path("/refresh")
+                .path("/players/refresh")
                 .build();
 
             let mut headers = HeaderMap::new();
