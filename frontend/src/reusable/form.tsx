@@ -72,7 +72,6 @@ export function FormGroup({
       placeholder={hint}
       onBlur={validateInput}
       onChange={formatInput}
-      className={`${BORDER_CLASSES[border]}`}
     />
   );
 
@@ -82,7 +81,7 @@ export function FormGroup({
   const flex = rows > 1 ? 'flex-col' : 'flex';
 
   return (
-    <div className={`${flex} justify-between m-2 flex-wrap`}>
+    <div className={`${flex} m-2 flex-wrap justify-between`}>
       <label htmlFor={id} className=''>
         {label}
       </label>
