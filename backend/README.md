@@ -23,7 +23,7 @@ This project is a **work in progress**.
   - Game lobbies and real-time play
   - Stats tracking and messaging
 
-For a detailed breakdown of planned steps and progress, see [ROADMAP.md](../ROADMAP.md).
+For a detailed breakdown of planned steps and progress, see [ROADMAP.md](./ROADMAP.md).
 
 ---
 
