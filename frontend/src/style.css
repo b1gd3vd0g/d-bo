@@ -16,7 +16,9 @@
   --color-positive: #40ac3e;
   --color-negative: #ac3e3e;
   --color-accent-1: #583eac;
+  --color-accent-1-darker: #4d379b;
   --color-accent-2: #8e4585;
+  --color-accent-2-darker: #71376b;
 }
 
 @layer base {

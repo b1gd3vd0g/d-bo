@@ -13,7 +13,7 @@ export function PrimaryButton({
 }: ButtonProps) {
   return (
     <button
-      className={`bg-accent-1 text-fg-2 mx-auto my-4 block rounded-xl px-4 py-2 text-2xl ${className}`}
+      className={`bg-accent-1 hover:bg-accent-1-darker text-fg-2 mx-auto my-4 block rounded-xl px-4 py-2 text-2xl ${className}`}
       onClick={onClick}
     >
       {children}
@@ -28,7 +28,7 @@ export function SecondaryButton({
 }: ButtonProps) {
   return (
     <button
-      className={`bg-accent-2 text-fg-2 mx-auto my-4 block rounded-xl px-4 py-2 text-2xl ${className}`}
+      className={`bg-accent-2 hover:bg-accent-2-darker text-fg-2 mx-auto my-4 block rounded-xl px-4 py-2 text-2xl ${className}`}
       onClick={onClick}
     >
       {children}
@@ -43,7 +43,7 @@ interface BackButtonProps {
 export function BackButton({ onClick }: BackButtonProps) {
   return (
     <button
-      className='text-fg-2 border-border block rounded-lg border px-3 py-1 text-2xl'
+      className='text-fg-2 border-border block rounded-lg border px-3 py-1 text-2xl hover:brightness-85'
       onClick={onClick}
     >
       {'<'}
