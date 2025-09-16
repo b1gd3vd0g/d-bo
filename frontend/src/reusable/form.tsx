@@ -21,7 +21,7 @@ type FormGroupProps = {
   validator?: (s: string) => boolean;
 };
 
-export function FormGroup({
+export function TextFormGroup({
   label,
   hint = '',
   rows = 1,
@@ -82,7 +82,7 @@ export function FormGroup({
 
   return (
     <div className={`${flex} m-2 flex-wrap justify-between`}>
-      <label htmlFor={id} className=''>
+      <label htmlFor={id} className='text-fg-1 text-xl'>
         {label}
       </label>
       {field}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FormGroup } from '../reusable/form';
+import { TextFormGroup } from '../reusable/form';
 import { Box } from '../reusable/containers';
 import {
   BackButton,
@@ -63,8 +63,8 @@ function LoginForm({ setChoice }: WelcomeFormProps) {
     <>
       <BackButton onClick={() => setChoice('undecided')} />
       <h2 className='text-center'>Log in:</h2>
-      <FormGroup label='Username/Email' setter={setUsername} />
-      <FormGroup label='Password' setter={setPassword} />
+      <TextFormGroup label='Username/Email' setter={setUsername} />
+      <TextFormGroup label='Password' type='password' setter={setPassword} />
     </>
   );
 }
@@ -79,16 +79,10 @@ function RegisterForm({ setChoice }: WelcomeFormProps) {
   return (
     <>
       <BackButton onClick={() => setChoice('undecided')} />{' '}
-      <button
-        className='bg-transparent text-3xl'
-        onClick={() => setChoice('undecided')}
-      >
-        {'<'}
-      </button>
       <h2 className='text-center'>Create a new account:</h2>
-      <FormGroup label='Username' setter={setUsername} />
-      <FormGroup label='Password' setter={setPassword} />
-      <FormGroup label='Email address' setter={setEmail} />
+      <TextFormGroup label='Username' setter={setUsername} />
+      <TextFormGroup label='Password' type='password' setter={setPassword} />
+      <TextFormGroup label='Email address' setter={setEmail} />
     </>
   );
 }
