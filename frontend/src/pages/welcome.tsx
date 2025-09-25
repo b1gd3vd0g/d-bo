@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { TextFormGroup } from '../reusable/form';
+import { RadioFormGroup, TextFormGroup } from '../reusable/form';
 import { Box } from '../reusable/containers';
 import {
   BackButton,
@@ -65,16 +65,23 @@ function LoginForm({ setChoice }: WelcomeFormProps) {
       <h2 className='text-center'>Log in:</h2>
       <TextFormGroup label='Username/Email' setter={setUsername} />
       <TextFormGroup label='Password' type='password' setter={setPassword} />
+      <PrimaryButton onClick={() => {}}>Submit</PrimaryButton>
     </>
   );
 }
+
+type Gender = 'male' | 'female' | 'other';
+type LanguagePreference = 'en' | 'es';
 
 function RegisterForm({ setChoice }: WelcomeFormProps) {
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [email, setEmail] = useState<string>('');
+  const [gender, setGender] = useState<Gender>('male');
+  const [languagePreference, setLanguagePreference] =
+    useState<LanguagePreference>('en');
 
-  console.log(username, password, email);
+  console.log(username, password, email, gender, languagePreference);
 
   return (
     <>
@@ -83,6 +90,26 @@ function RegisterForm({ setChoice }: WelcomeFormProps) {
       <TextFormGroup label='Username' setter={setUsername} />
       <TextFormGroup label='Password' type='password' setter={setPassword} />
       <TextFormGroup label='Email address' setter={setEmail} />
+      <RadioFormGroup
+        label='Gender'
+        options={[
+          { label: 'Male', value: 'male' },
+          { label: 'Female', value: 'female' },
+          { label: 'Other', value: 'gender' }
+        ]}
+        value={gender}
+        onChange={(val) => setGender(val as Gender)}
+      />
+      <RadioFormGroup
+        label='Preferred language'
+        options={[
+          { label: 'English', value: 'en' },
+          { label: 'Español', value: 'es' }
+        ]}
+        value={languagePreference}
+        onChange={(val) => setLanguagePreference(val as LanguagePreference)}
+      />
+      <PrimaryButton onClick={() => {}}>Submit</PrimaryButton>
     </>
   );
 }
