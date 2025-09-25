@@ -19,9 +19,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Rust
-        uses: actions/setup-rust@v1
-        with:
-          rust-version: stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Cache Cargo registry and build
         uses: actions/cache@v4
@@ -39,7 +37,6 @@ jobs:
 
       - name: Test backend
         run: cargo test --verbose
-
   frontend:
     runs-on: ubuntu-latest
     defaults:
