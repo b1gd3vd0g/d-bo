@@ -132,3 +132,7 @@ After these six weeks are completed, the application should be fully functional,
 - Keep track of player statistics:
   - Between two players, keep track of wins/losses/draws/dropouts **specifically** between the two players
   - As a whole, keep track of **all** wins/losses/draws/dropouts for a single player.
+- Enable matchmaking for players who wish to be matched up with random players who they are not friends with
+  - This matchmaking should try to find players with similar statistics
+  - It should also try to find **active** players
+    - I'm not sure what I mean by this yet; players who have played many games recently, players who have signed on recently, players who are **currently seeking connections**, players who are **currently signed in**... TBD.
