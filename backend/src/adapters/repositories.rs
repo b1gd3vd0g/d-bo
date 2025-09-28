@@ -22,7 +22,7 @@ use mongodb::{Collection, bson::doc};
 use crate::{
     adapters::mongo::database,
     errors::DBoResult,
-    models::{Collectible, ConfirmationToken, Counter, Model, Player, RefreshToken, Unconstrained},
+    models::{Collectible, ConfirmationToken, Counter, Model, Player, RefreshToken},
 };
 
 /// An interface over a database collection which handles all database interactions related to a
@@ -80,20 +80,6 @@ impl<T: Model + Send + Sync> Repository<T> {
     /// - `AdapterError` if the query fails
     pub async fn count(&self) -> DBoResult<u64> {
         Ok(self.collection.count_documents(doc! {}).await?)
-    }
-}
-
-impl<T: Model + Send + Sync + Unconstrained> Repository<T> {
-    /// Insert a new document into the repository.
-    ///
-    /// ### Arguments
-    /// - `document`: The document to be inserted.
-    ///
-    /// ### Errors
-    /// `AdapterError` if the query fails.
-    pub async fn insert(&self, document: &T) -> DBoResult<()> {
-        self.collection.insert_one(document).await?;
-        Ok(())
     }
 }
 

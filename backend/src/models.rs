@@ -15,6 +15,10 @@ use crate::{
     adapters::hashing::hash_secret, errors::DBoResult, models::player_validation::validate_all,
 };
 
+// //////////// //
+// MODEL TRAITS //
+// //////////// //
+
 /// A trait for all Models that are stored in a specific collection.
 pub trait Collectible {
     /// Return the name of the collection storing the models.
@@ -29,8 +33,14 @@ pub trait Identifiable {
     fn id_field() -> &'static str;
 }
 
-/// A marker trait for Models which are not constrained by things like uniqueness indices.
-pub trait Unconstrained {}
+/// A composite trait that is required for any database model. Any struct implementing these traits
+/// will automatically receive the trait `Model`.
+pub trait Model: Collectible + Identifiable + Serialize + for<'de> Deserialize<'de> {}
+impl<T> Model for T where T: Collectible + Identifiable + Serialize + for<'de> Deserialize<'de> {}
+
+// /////////////// //
+// DATABASE MODELS //
+// /////////////// //
 
 /// A document representing a player's account information, stored in the `players` collection.
 #[derive(Clone, Deserialize, Serialize)]
@@ -136,6 +146,10 @@ impl ConfirmationToken {
             used: false,
         }
     }
+
+    pub fn player_id(&self) -> &str {
+        &self.player_id
+    }
 }
 
 impl Collectible for ConfirmationToken {
@@ -148,12 +162,11 @@ impl Identifiable for ConfirmationToken {
     fn id(&self) -> &str {
         &self.token_id
     }
+
     fn id_field() -> &'static str {
         "token_id"
     }
 }
-
-impl Unconstrained for ConfirmationToken {}
 
 /// A document representing a counter, stored in the `counters` collection.
 #[derive(Clone, Deserialize, Serialize)]
@@ -180,6 +193,7 @@ impl Identifiable for Counter {
     fn id(&self) -> &str {
         &self.name
     }
+
     fn id_field() -> &'static str {
         "name"
     }
@@ -240,8 +254,3 @@ impl Identifiable for RefreshToken {
         "token_id"
     }
 }
-
-/// A composite trait that is required for any database model. Any struct implementing these traits
-/// will automatically receive the trait `Model`.
-pub trait Model: Collectible + Identifiable + Serialize + for<'de> Deserialize<'de> {}
-impl<T> Model for T where T: Collectible + Identifiable + Serialize + for<'de> Deserialize<'de> {}
