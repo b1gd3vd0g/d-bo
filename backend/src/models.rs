@@ -5,7 +5,6 @@
 //! the database; they are basically just shapes. Actual interaction with the database is handled by
 //! the repository layer.
 
-pub mod game;
 pub mod player_validation;
 
 use bson::DateTime;
