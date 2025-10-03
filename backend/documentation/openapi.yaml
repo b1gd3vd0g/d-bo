@@ -24,9 +24,6 @@ tags:
   - name: Player Accounts
     description:
       These routes have to do with the creation, reading, updating, and deletion of player accounts.
-  - name: Email Verification
-    description: 
-      These endpoints have to do with confirming or rejecting the player email verification.
 
 paths:
   /players:
@@ -34,8 +31,49 @@ paths:
       tags:
         - Player Accounts
       summary: Create a new player account.
-      description:
-        This endpoint is used when a player is registering a new account for D-Bo.
+      description: |
+        This endpoint is used when a player is registering a new account for D-Bo. The body contains
+        all the necessary information in order to create a new account.
+        
+        The first type of information required is the player's **login credentials** - their
+        username, email address, and password. The following rules are enforced for a player's login
+        credentials:
+        
+        **username**:
+        
+        - Must be between 6 and 16 characters
+        - May only include letters, numbers, and underscores
+        - It may not start with an underscore
+        - It may not contain two or more consecutive underscores
+        
+        **password**:
+
+        - Must be between 8 and 32 characters
+        - Must include at least one of each of the following:
+          - An uppercase letter
+          - A lowercase letter     
+          - A number
+          - One of the following symbols: `! @ # $ % ^ & * + = ?`
+        - It may not contain any spaces or symbols not listed above
+        
+        **email**:
+
+        - It must contain a single `@` character, separating the **prefix** and the **domain**
+        - The prefix must not:
+          - Be an empty string
+          - Contain characters other than letters, numbers, and the following symbols: `. _ + -`
+          - Begin nor end with a dot
+          - Contain consecutive dots
+        - The domain must not:
+          - Be an empty string
+          - Contain characters other than letters, numbers, dots, and hyphens
+        - Each **level** (separated by dots) of the domain must not:
+          - Be an empty string
+          - Begin nor end with a hyphen
+        - The **top level domain** (the final level) must contain two or more characters
+        
+        Additionally, the *email* and *username* fields must be **case-insensitively unique** to any
+        others which exist in the database.
       requestBody:
         description: Provide the proposed username, password, and email for the new account.
         content:
@@ -235,7 +273,22 @@ paths:
                   "Failed to deserialize the JSON body into the target type: missing field 
                   `username_or_email` at line 4 column 1"
         500:
-          description: The request could not be completed due to a server-side error.
+          $ref: '#/components/responses/ServerSideError'
+  /players/{player_id}/confirm/{token_id}:
+    post:
+      tags:
+        - Player Accounts
+      summary: Confirm a new player account.
+      description: This request will confirm a newly registered player account, allowing them to
+        utilize the application's true functionality. This endpoint is accessed by the secure link
+        provided in the email sent upon account registration. The server will find the token
+        (represented by the token_id in the path), and will update the related player account to 
+        have a status of "confirmed". This prevents the account from being automatically deleted 48
+        hours after registration.
+    delete:
+      tags:
+        - Player Accounts
+      summary: Reject a new player account.
 
 components:
   responses:
