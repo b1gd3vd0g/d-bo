@@ -1,6 +1,8 @@
 /// This module contains all the request bodies that are required in incoming HTTP requests.
 use serde::Deserialize;
 
+use crate::models::submodels::{Gender, LanguagePreference, Pronoun};
+
 /// The required request body for registering a new player account.
 #[derive(Deserialize)]
 pub struct PlayerRegistrationRequestBody {
@@ -10,6 +12,12 @@ pub struct PlayerRegistrationRequestBody {
     password: String,
     /// The requested email address
     email: String,
+    /// The player's preferred gender
+    gender: Gender,
+    /// The player's preferred language
+    preferred_language: LanguagePreference,
+    /// The player's chosen pronouns
+    pronoun: Option<Pronoun>,
 }
 
 impl PlayerRegistrationRequestBody {
@@ -23,6 +31,18 @@ impl PlayerRegistrationRequestBody {
 
     pub fn email(&self) -> &str {
         &self.email
+    }
+
+    pub fn gender(&self) -> &Gender {
+        &self.gender
+    }
+
+    pub fn preferred_language(&self) -> &LanguagePreference {
+        &self.preferred_language
+    }
+
+    pub fn pronoun(&self) -> &Option<Pronoun> {
+        &self.pronoun
     }
 }
 

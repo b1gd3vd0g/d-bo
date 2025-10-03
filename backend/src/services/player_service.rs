@@ -9,7 +9,10 @@ use crate::{
     },
     errors::{DBoError, DBoResult},
     handlers::responses::SafePlayerResponse,
-    models::{ConfirmationToken, Identifiable, Player, RefreshToken},
+    models::{
+        ConfirmationToken, Identifiable, Player, RefreshToken,
+        submodels::{Gender, LanguagePreference, Pronoun},
+    },
     services::types::LoginTokenInfo,
 };
 
@@ -41,8 +44,30 @@ impl PlayerService {
         username: &str,
         password: &str,
         email: &str,
+        gender: &Gender,
+        preferred_language: &LanguagePreference,
+        pronoun: &Option<Pronoun>,
     ) -> DBoResult<SafePlayerResponse> {
-        let player = Player::new(username, password, email)?;
+        let assumed_pronoun = match gender {
+            Gender::Male => Pronoun::Masculine,
+            Gender::Female => Pronoun::Feminine,
+            Gender::Other => match preferred_language {
+                LanguagePreference::English => Pronoun::Neutral,
+                LanguagePreference::Spanish => match pronoun {
+                    Some(p) => p.clone(),
+                    None => Pronoun::Neutral,
+                },
+            },
+        };
+
+        let player = Player::new(
+            username,
+            password,
+            email,
+            gender,
+            preferred_language,
+            &assumed_pronoun,
+        )?;
         players.insert(&player).await?;
 
         let token = ConfirmationToken::new(player.id());

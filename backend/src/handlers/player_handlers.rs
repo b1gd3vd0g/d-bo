@@ -45,6 +45,9 @@ pub async fn handle_player_registration(
         body.username(),
         body.password(),
         body.email(),
+        body.gender(),
+        body.preferred_language(),
+        body.pronoun(),
     )
     .await;
 

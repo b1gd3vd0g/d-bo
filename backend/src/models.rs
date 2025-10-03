@@ -6,13 +6,21 @@
 //! the repository layer.
 
 pub mod player_validation;
+pub mod submodels;
+
+use std::array;
 
 use bson::DateTime;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
-    adapters::hashing::hash_secret, errors::DBoResult, models::player_validation::validate_all,
+    adapters::hashing::hash_secret,
+    errors::DBoResult,
+    models::{
+        player_validation::validate_all,
+        submodels::{Gender, LanguagePreference, PlayerStats, Pronoun},
+    },
 };
 
 // //////////// //
@@ -57,11 +65,26 @@ pub struct Player {
     created: DateTime,
     /// An indicator for whether or not the player's email address has ever been confirmed
     confirmed: bool,
-    /// An indicator for whether or not the player's **current** email address has been confirmed
-    email_verified: bool,
     /// A player's proposed email address; this value is only present if a player has **requested**
     /// to change their email address, but has not yet **verified** the new one.
     proposed_email: Option<String>,
+    /// The last four passwords used by this account.
+    last_passwords: [String; 4],
+    /// The player's gender.
+    gender: Gender,
+    /// The player's preferred language.
+    preferred_language: LanguagePreference,
+    /// The player's preferred pronouns, specifically useful while translating to Spanish for
+    /// players with `gender == Gender.Other`.
+    pronoun: Pronoun,
+    /// The player's gameplay stats.
+    stats: PlayerStats,
+    /// The date of the player's last **successful** login.
+    last_login: DateTime,
+    /// The number of consecutive failed logins.
+    failed_logins: u8,
+    /// The date when a player can attempt to log in again.
+    locked_until: Option<DateTime>,
 }
 
 impl Player {
@@ -75,18 +98,34 @@ impl Player {
     /// ### Errors
     /// - `InvalidPlayerInput` if the input does not pass validation
     /// - `AdapterError` if password hashing fails
-    pub fn new(username: &str, password: &str, email: &str) -> DBoResult<Self> {
+    pub fn new(
+        username: &str,
+        password: &str,
+        email: &str,
+        gender: &Gender,
+        preferred_language: &LanguagePreference,
+        pronoun: &Pronoun,
+    ) -> DBoResult<Self> {
         validate_all(username, password, email)?;
+
+        let now = DateTime::now();
 
         Ok(Self {
             player_id: Uuid::new_v4().to_string(),
             username: String::from(username),
             password: hash_secret(password)?,
             email: String::from(email),
-            created: DateTime::now(),
+            created: now,
             confirmed: false,
-            email_verified: false,
             proposed_email: None,
+            last_passwords: array::from_fn(|_| String::new()),
+            gender: gender.clone(),
+            preferred_language: preferred_language.clone(),
+            pronoun: pronoun.clone(),
+            stats: PlayerStats::default(),
+            last_login: now,
+            failed_logins: 0,
+            locked_until: None,
         })
     }
 
