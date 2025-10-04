@@ -10,6 +10,7 @@
 
 #[doc(hidden)]
 mod confirmation_token_repo;
+pub mod counter_id;
 #[doc(hidden)]
 mod counters_repo;
 #[doc(hidden)]

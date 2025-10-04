@@ -23,7 +23,7 @@ use once_cell::sync::Lazy;
 use tokio::net::TcpListener;
 
 use crate::{
-    adapters::repositories::Repositories,
+    adapters::repositories::{Repositories, counter_id::CounterId},
     config::{assets::ASSETS, environment::ENV},
     router::router,
 };
@@ -40,7 +40,7 @@ async fn main() {
 
     repositories
         .counters()
-        .ping()
+        .increment_counter(CounterId::Pings)
         .await
         .expect("Failed to ping the MongoDB database.");
 

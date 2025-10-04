@@ -5,12 +5,12 @@ use crate::{
         email::send_registration_email,
         hashing::{generate_secret, verify_secret},
         jwt::generate_access_token,
-        repositories::Repository,
+        repositories::{Repository, counter_id::CounterId},
     },
     errors::{DBoError, DBoResult},
     handlers::responses::SafePlayerResponse,
     models::{
-        ConfirmationToken, Identifiable, Player, RefreshToken,
+        ConfirmationToken, Counter, Identifiable, Player, RefreshToken,
         submodels::{Gender, LanguagePreference},
     },
     services::types::LoginTokenInfo,
@@ -46,6 +46,7 @@ impl PlayerService {
     pub async fn register_player(
         players: &Repository<Player>,
         tokens: &Repository<ConfirmationToken>,
+        counters: &Repository<Counter>,
         username: &str,
         password: &str,
         email: &str,
@@ -83,6 +84,8 @@ impl PlayerService {
             assumed_pronoun,
         )
         .await?;
+
+        counters.increment_counter(CounterId::Pings).await?;
 
         Ok(SafePlayerResponse::from(&player))
     }

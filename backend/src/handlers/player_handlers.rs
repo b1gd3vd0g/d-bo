@@ -42,6 +42,7 @@ pub async fn handle_player_registration(
     let outcome = PlayerService::register_player(
         repos.players(),
         repos.confirmation_tokens(),
+        repos.counters(),
         body.username(),
         body.password(),
         body.email(),

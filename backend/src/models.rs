@@ -226,15 +226,15 @@ impl Identifiable for ConfirmationToken {
 /// A document representing a counter, stored in the `counters` collection.
 #[derive(Clone, Deserialize, Serialize)]
 pub struct Counter {
-    /// The unique name, indicating what statistic the counter is representing
-    name: String,
+    /// The unique identifier, indicating what statistic the counter is representing
+    id: String,
     /// The amount of times a counter has been incremented
-    counter: u64,
+    count: u64,
 }
 
 impl Counter {
-    pub fn counter(&self) -> u64 {
-        self.counter
+    pub fn count(&self) -> u64 {
+        self.count
     }
 }
 
@@ -246,11 +246,11 @@ impl Collectible for Counter {
 
 impl Identifiable for Counter {
     fn id(&self) -> &str {
-        &self.name
+        &self.id
     }
 
     fn id_field() -> &'static str {
-        "name"
+        "id"
     }
 }
 
