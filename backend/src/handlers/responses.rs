@@ -3,7 +3,10 @@
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
-use crate::models::{Identifiable, Player};
+use crate::models::{
+    Identifiable, Player,
+    submodels::{Gender, LanguagePreference, PlayerStats},
+};
 
 /// Returned when registration fails due to user input not being **case-insensitively unique**
 /// within the database.
@@ -77,7 +80,16 @@ pub struct SafePlayerResponse {
     username: String,
     /// The player's email address
     email: String,
+    /// The time at which the player account was created
     created: DateTime<Utc>,
+    /// The player's gender
+    gender: Gender,
+    /// The player's preferred language
+    preferred_language: LanguagePreference,
+    /// The player's preferred pronouns
+    pronoun: Gender,
+    /// A tracker of the player's wins, losses, and dropouts
+    stats: PlayerStats,
 }
 
 impl SafePlayerResponse {
@@ -91,6 +103,10 @@ impl SafePlayerResponse {
             username: String::from(player.username()),
             email: String::from(player.email()),
             created: player.created().to_chrono(),
+            gender: player.gender().clone(),
+            preferred_language: player.preferred_language().clone(),
+            pronoun: player.pronoun().clone(),
+            stats: player.stats().clone(),
         }
     }
 }

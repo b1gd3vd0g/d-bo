@@ -144,6 +144,22 @@ impl Player {
     pub fn created(&self) -> &DateTime {
         &self.created
     }
+
+    pub fn gender(&self) -> &Gender {
+        &self.gender
+    }
+
+    pub fn preferred_language(&self) -> &LanguagePreference {
+        &self.preferred_language
+    }
+
+    pub fn pronoun(&self) -> &Gender {
+        &self.pronoun
+    }
+
+    pub fn stats(&self) -> &PlayerStats {
+        &self.stats
+    }
 }
 
 impl Collectible for Player {
