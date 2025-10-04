@@ -78,6 +78,7 @@ impl PlayerService {
             email,
             username,
             token.id(),
+            player.id(),
             preferred_language,
             assumed_pronoun,
         )

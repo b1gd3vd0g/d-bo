@@ -25,10 +25,16 @@ use crate::{
 /// ### Returns
 /// A string with all placeholders replaced with the necessary information
 #[doc(hidden)]
-fn fill_confirmation_template(template: &str, username: &str, token_id: &str) -> String {
+fn fill_confirmation_template(
+    template: &str,
+    username: &str,
+    token_id: &str,
+    player_id: &str,
+) -> String {
     template
         .replace("{{USERNAME}}", username)
         .replace("{{TOKEN_ID}}", token_id)
+        .replace("{{PLAYER_ID}}", player_id)
         .replace("{{FRONTEND_URL}}", &ENV.frontend_url)
         .replace("{{BIGDEVDOG_LOGO}}", &ASSETS.images.bigdevdog_logo.cid())
         .replace("{{D_BO_LOGO}}", &ASSETS.images.d_bo_logo.cid())
@@ -75,6 +81,7 @@ pub async fn send_registration_email(
     player_email: &str,
     username: &str,
     token_id: &str,
+    player_id: &str,
     language: &LanguagePreference,
     pronoun: &Gender,
 ) -> DBoResult<()> {
@@ -83,8 +90,9 @@ pub async fn send_registration_email(
         LanguagePreference::Spanish => &ASSETS.templates.registration.es,
     };
 
-    let mut html_message = fill_confirmation_template(&variants.html, username, token_id);
-    let mut txt_message = fill_confirmation_template(&variants.txt, username, token_id);
+    let mut html_message =
+        fill_confirmation_template(&variants.html, username, token_id, player_id);
+    let mut txt_message = fill_confirmation_template(&variants.txt, username, token_id, player_id);
 
     let subject = match language {
         LanguagePreference::Spanish => {
