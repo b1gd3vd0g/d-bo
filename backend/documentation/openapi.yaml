@@ -32,8 +32,15 @@ paths:
         - Player Accounts
       summary: Create a new player account.
       description: |
-        This endpoint is used when a player is registering a new account for D-Bo. The body contains
-        all the necessary information in order to create a new account.
+        This endpoint is used when a player is registering a new account for D-Bo. A successful
+        request results in the Player document being inserted into the database, a **Confirmation
+        Token** being generated (used to confirm a player's email; good for 15 minutes), and
+        a **registration email** being sent to the provided email address, welcoming them to the 
+        application and providing them with a link to confirm their account.
+        
+        ## Request Body
+
+        The body contains all the necessary information in order to create a new account.
         
         The first type of information required is the player's **login credentials** - their
         username, email address, and password. The following rules are enforced for a player's login
@@ -74,6 +81,24 @@ paths:
         
         Additionally, the *email* and *username* fields must be **case-insensitively unique** to any
         others which exist in the database.
+
+        Also required in this request is the player's gender and preferred language, which have a
+        unique relationship to the *pronoun* field. The *pronoun* field is set to match the player's
+        gender in all cases but the following:
+
+        Spanish-speaking players with a non-binary gender get to choose how they should be referred
+        to with gendered language. This is important because there is no **universally accepted**
+        way to refer to non-binary people in Spanish. There is a fairly new trend involving "-e"
+        endings, but some players may not prefer this; therefore, they are given the choice of how
+        they should be referred to. The table below provides an example:
+
+        | Pronoun | "(He/She/They) have been your friend for 1 month." |
+        | ------- | -------------------------------------------------- |
+        | m       | "Él ha sido su amigo por un mes."                  |
+        | f       | "Ella ha sido su amiga por un mes."                |
+        | nb      | "Elle ha sido su amigue por un mes."               |
+
+        A player's pronouns are used to customize the game interface, email correspondences, etc.
       requestBody:
         description: Provide the proposed username, password, and email for the new account.
         content:
@@ -93,37 +118,31 @@ paths:
                   type: string
                   format: email
                   example: jaeger.dog@bigdevdog.com
+                gender:
+                  $ref: '#/components/schemas/Gender'
+                preferred_language:
+                  $ref: '#/components/schemas/Language'
+                pronoun:
+                  $ref: '#/components/schemas/Gender'
               required:
                 - username
                 - password
                 - email
+                - gender
+                - preferred_language
       responses:
         200:
           description: The player account has been created successfully.
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  username:
-                    type: string
-                  email:
-                    type: string
-                  player_id:
-                    type: string
-                required:
-                  - username
-                  - password
-                  - player_id
-                example:
-                  username: jaeger_dog
-                  email: jaeger.dog@bigdevdog.com
-                  player_id: 9334c148-bff1-47b2-9e56-7469b788064e
+                $ref: '#/components/schemas/PlayerInfo'
         400:
-          description:
-            The account could not be created, because one or more of the fields provided do not meet
-            the set requirements (i.e. password is too short; email address is missing an @ symbol).
-            <br /><br />
+          description: |
+            The account could not be created, because one or more of the login credentials provided 
+            do not meet the set requirements (i.e. password is too short; email address is missing 
+            an @ symbol).
+            
             This response could also occur because the request body was not proper JSON - in this
             case, a plaintext message will be returned describing the error.
           content:
@@ -174,9 +193,11 @@ paths:
                   username: false 
                   email: true
         422:
-          description:
-            The account could not be created because the request body could not be processed; most
-            likely because it is missing critical fields.
+          description: |
+            The account could not be created because the request body could not be processed. It 
+            could be missing required fields, or the strings provided in the **gender**,
+            **preferred_language**, or **pronoun** fields are not a valid enum (see Gender and
+            Language schemas).
           content:
             text/plain:
               schema:
@@ -187,24 +208,88 @@ paths:
         500:
           $ref: '#/components/responses/ServerSideError'
 
+  /players/{player_id}/confirm/{token_id}:
+    post:
+      tags:
+        - Player Accounts
+      summary: Confirm a newly registered account.
+      description: |
+        This endpoint is used to verify a new player's email address. This marks the account as
+        "confirmed", which allows the player to start logging in and utilizing the functionality of
+        the application. This request requires that a **confirmation token** exists within the
+        database, and that it is *not expired* - confirmation tokens expire after **15 minutes**.
+
+        During account registration, a link is provided in the registration email to a page where 
+        the player can click a button to confirm their account and start playing. If the **token** 
+        represented by the *token_id* path parameter is found to be **expired**, the player will
+        have to request a new token, receive a new email, and follow that link within 15 minutes**.
+
+        It is important to note: confirmation tokens and *unconfirmed* player accounts are
+        automatically deleted from the database after **two days** - after two days without
+        confirming the account, the player must register again if they wish to play.
+
+        Additionally, there may only ever be a single confirmation token associated with any single
+        player account in the database at any time. So, if a new email is sent with a new token
+        link, **all previously provided links** will be rendered obsolete.
+
+        This request will toggle the **confirmed** flag for the player to `true`, and will delete
+        the confirmation token from the database.
+      parameters:
+        - $ref: '#/components/parameters/PlayerId'
+        - $ref: '#/components/parameters/TokenId'
+      responses:
+        200:
+          description: The account has been confirmed successfully, allowing the player to start
+            using D-Bo.
+
+    delete:
+      tags: 
+        - Player Accounts
+      summary: Reject a newly registered account.
+      description: |
+        This endpoint is used to **reject** an account registration. This would mostly be used in
+        the case that somebody has received a registration email by mistake. It will immediately
+        delete all information related to the associated account.
+
+        Unlike the POST request to confirm a new account, this endpoint will work regardless of
+        whether the confirmation token has expired 15 minutes after creation; it simply requires
+        that the player account (associated with the player_id) and the confirmation token 
+        (associated with the token_id) **both** exist within the database.
+
+        It is important to note: confirmation tokens and *unconfirmed* player accounts are
+        automatically deleted from the database after **two days**. If this request is attempted,
+        and neither can be found, that likely means that the account has already been deleted (or 
+        that the request did not correspond with any existing account). In this case, a success
+        response is *still returned*, because all traces of the count have been erased, which was 
+        the goal all along.
+      parameters:
+        - $ref: '#/components/parameters/PlayerId'
+        - $ref: '#/components/parameters/TokenId'
+      responses:
+        200:
+          description: The account has been wiped successfully from our database.
+        409:
+          description: The account has already been confirmed, and therefore cannot be deleted in 
+            this way.
+
   /players/login:
     post:
       tags:
         - Player Accounts
       summary: Attempt to log in via username/email and password.
-      description: 
+      description: |
         This endpoint is called whenever a user attempts to log in with their username and password.
         Upon success, this endpoint will return an **access token** in the response body, which can 
         be used to authenticate the player for the next **15 minutes**.
-        <br /><br />
+        
         This endpoint also generates a **refresh token** for the player, and returns it to the
         client via an **HTTP-only cookie** which will automatically be shared with the **POST
         /players/refresh** endpoint.
-        <br /><br />
+        
         The most common cause of failure for this function is an authentication failure, meaning the
         provided username/email and password combination does not match the records stored in the 
         database.
-        <br /><br />
+        
         A 500 response could be returned in the case that the database connection failed, or in the
         very unlikely case that an internal adapter has failed within the application.
       requestBody:
@@ -228,7 +313,7 @@ paths:
                 - password
       responses:
         200:
-          description:
+          description: |
             The player has been authenticated successfully. The response body contains an access
             token to securely authenticate the player for the next **15 minutes**, and an HTTP-only
             cookie containing refresh token information has been set for the **POST 
@@ -264,7 +349,7 @@ paths:
             Authentication failed; the username/email and/or password did not match the database.
         422:
           description: The request body could not be processed; most likely because it is missing
-            critical fields.
+            required fields.
           content:
             text/plain:
               schema:
@@ -274,25 +359,91 @@ paths:
                   `username_or_email` at line 4 column 1"
         500:
           $ref: '#/components/responses/ServerSideError'
-  /players/{player_id}/confirm/{token_id}:
-    post:
-      tags:
-        - Player Accounts
-      summary: Confirm a new player account.
-      description: This request will confirm a newly registered player account, allowing them to
-        utilize the application's true functionality. This endpoint is accessed by the secure link
-        provided in the email sent upon account registration. The server will find the token
-        (represented by the token_id in the path), and will update the related player account to 
-        have a status of "confirmed". This prevents the account from being automatically deleted 48
-        hours after registration.
-    delete:
-      tags:
-        - Player Accounts
-      summary: Reject a new player account.
 
 components:
+  parameters: 
+    PlayerId:
+      in: path
+      name: player_id
+      required: true
+      schema:
+        type: string
+      description: A randomly generated UUID v4 identifying the player.
+      example: 9334c148-bff1-47b2-9e56-7469b788064e
+    TokenId:
+      in: path
+      name: token_id
+      required: true
+      schema:
+        type: string
+      description: A randomly generated UUID v4 identifying the confirmation token.
+      example: 06d08b8c-c677-441f-9599-afd6f505c517
   responses:
     ServerSideError:
       description: The request could not be completed due to a server-side error.
-      
+  schemas:
+    Gender:
+      type: string
+      enum:
+        - m
+        - f
+        - nb
+    Language:
+      type: string
+      enum:
+        - en
+        - es
+    PlayerInfo:
+      type: object
+      properties:
+        player_id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+        created:
+          type: string
+        gender:
+          $ref: '#/components/schemas/Gender'
+        preferred_language:
+          $ref: '#/components/schemas/Language'
+        pronoun:
+          $ref: '#/components/schemas/Gender'
+        stats:
+          $ref: '#/components/schemas/PlayerStats'
+      required:
+        - player_id
+        - username
+        - password
+        - created
+        - gender
+        - preferred_language
+        - pronoun
+        - stats
+      example:
+        username: jaeger_dog
+        email: jaeger.dog@bigdevdog.com
+        player_id: 9334c148-bff1-47b2-9e56-7469b788064e
+        created: 2025-10-04T02:12:50.602Z
+        gender: m
+        preferred_language: en
+        pronoun: m
+        stats:
+          wins: 0
+          losses: 0
+          dropouts: 0
+    PlayerStats:
+      type: object
+      properties:
+        wins:
+          type: number
+        losses:
+          type: number
+        dropouts:
+          type: number
+      example:
+        wins: 0
+        losses: 0
+        dropouts: 0
 
