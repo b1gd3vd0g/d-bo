@@ -27,7 +27,7 @@ impl Repository<Counter> {
             .collection
             .find_one_and_update(
                 doc! { Counter::id_field(): &id.to_string() },
-                doc! { "$inc": { "counter": 1 } },
+                doc! { "$inc": { "count": 1 } },
             )
             .upsert(true)
             .await?
