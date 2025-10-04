@@ -15,6 +15,12 @@ static EMAIL_TEMPLATES_DIRECTORY: &str = "assets/templates";
 #[doc(hidden)]
 static IMAGES_DIRECTORY: &str = "assets/img";
 
+// File suffixes indicating language
+#[doc(hidden)]
+static DOT_ES: &str = ".es";
+#[doc(hidden)]
+static DOT_EN: &str = ".en";
+
 // File extensions used in assets
 #[doc(hidden)]
 static DOT_HTML: &str = ".html";
@@ -25,21 +31,13 @@ static DOT_PNG: &str = ".png";
 
 // Email template filenames
 #[doc(hidden)]
-static CONFIRMATION_EMAIL: &str = "confirmation";
+static REGISTRATION_EMAIL: &str = "registration";
 
 // Image filenames
 #[doc(hidden)]
 static D_BO_LOGO: &str = "d_bo_logo";
 #[doc(hidden)]
 static BIGDEVDOG_LOGO: &str = "bigdevdog_logo";
-
-/// Holds both HTML and plaintext versions of a single email template.
-pub struct EmailTemplate {
-    /// The HTML template for the email, which is most-often used.
-    pub html: String,
-    /// The plaintext template to send as a backup.
-    pub txt: String,
-}
 
 /// Read a template file into a String.
 ///
@@ -58,45 +56,78 @@ fn read_template(path: &PathBuf) -> String {
 /// ### Arguments
 /// - `template_name`: The name of the file
 #[doc(hidden)]
-fn template_path(template_name: &str, extension: &str) -> PathBuf {
-    Path::new(EMAIL_TEMPLATES_DIRECTORY).join(format!("{}{}", template_name, extension))
+fn template_path(template_name: &str, language_suffix: &str, extension: &str) -> PathBuf {
+    Path::new(EMAIL_TEMPLATES_DIRECTORY)
+        .join(format!("{}{}{}", template_name, language_suffix, extension))
 }
 
-impl EmailTemplate {
-    /// Construct a new EmailTemplate based on the filename.
+/// Holds both the HTML and plaintext versions of a single email template, both in a specific
+/// language.
+pub struct EmailFormatVariants {
+    /// The HTML template for the email, which is most-often used.
+    pub html: String,
+    /// The plaintext template for the email, which is sent as a backup for primitive email clients,
+    /// and which also decrease the "spam score", increasing the likelihood that an email reaches
+    /// the player's primary inbox.
+    pub txt: String,
+}
+
+impl EmailFormatVariants {
+    /// Create a new EmailFormatVariants struct
     ///
     /// ### Arguments
-    /// - `template_name`: The name of the templates, without the extension. This requires that both
-    ///   the .txt and .html files have **the same name** and are located within the `
-    ///   EMAIL_TEMPLATES_DIRECTORY`.
+    /// - `template_name`: The email template title
+    /// - `language_suffix`: The language suffix for the files
     ///
     /// ### Panics
-    /// If either template file could not be found.
-    pub fn new(template_name: &str) -> Self {
+    /// If either file cannot be found
+    fn new(template_name: &str, language_suffix: &str) -> Self {
         Self {
-            html: read_template(&template_path(template_name, DOT_HTML)),
-            txt: read_template(&template_path(template_name, DOT_TXT)),
+            html: read_template(&template_path(template_name, language_suffix, DOT_HTML)),
+            txt: read_template(&template_path(template_name, language_suffix, DOT_TXT)),
         }
     }
 }
 
-/// Contains all email templates used within the application.
+/// Holds all variants of a single email template, sorted by language first, and then by format.
+pub struct EmailLocalizationVariants {
+    /// The English translations of the email template.
+    pub en: EmailFormatVariants,
+    /// The Spanish translations of the email template.
+    pub es: EmailFormatVariants,
+}
+
+impl EmailLocalizationVariants {
+    /// Construct a new EmailLocalizationVariants struct
+    ///
+    /// ### Arguments
+    /// - `template_name`: The email template title
+    ///
+    /// ### Panics
+    /// If any of the four required files cannot be found
+    fn new(template_name: &str) -> Self {
+        Self {
+            en: EmailFormatVariants::new(template_name, DOT_EN),
+            es: EmailFormatVariants::new(template_name, DOT_ES),
+        }
+    }
+}
+
+/// Holds all email templates used by the application, sorted by purpose first, then by language,
+/// and finally by format.
 pub struct EmailTemplates {
-    /// The email sent when confirming a player account for the first time. This email may be resent
-    /// if the player's confirmation token has expired before confirming the email address, but
-    /// should **not** be sent when confirming a player's **new** email address after they have
-    /// changed it.
-    pub confirmation: EmailTemplate,
+    /// The registration email template, sent immediately upon player account creation.
+    pub registration: EmailLocalizationVariants,
 }
 
 impl EmailTemplates {
-    /// Configure all email templates.
+    /// Configure all email templates within the application.
     ///
     /// ### Panics
-    /// If any of the email templates could not be found.
-    pub fn configure() -> Self {
+    /// If any of the required template files cannot be found.
+    fn configure() -> Self {
         Self {
-            confirmation: EmailTemplate::new(CONFIRMATION_EMAIL),
+            registration: EmailLocalizationVariants::new(REGISTRATION_EMAIL),
         }
     }
 }

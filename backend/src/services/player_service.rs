@@ -2,7 +2,7 @@
 
 use crate::{
     adapters::{
-        email::send_confirmation_email,
+        email::send_registration_email,
         hashing::{generate_secret, verify_secret},
         jwt::generate_access_token,
         repositories::Repository,
@@ -11,7 +11,7 @@ use crate::{
     handlers::responses::SafePlayerResponse,
     models::{
         ConfirmationToken, Identifiable, Player, RefreshToken,
-        submodels::{Gender, LanguagePreference, Pronoun},
+        submodels::{Gender, LanguagePreference},
     },
     services::types::LoginTokenInfo,
 };
@@ -28,6 +28,11 @@ impl PlayerService {
     /// - `username`: The requested username
     /// - `password`: The requested password
     /// - `email`: The requested email address
+    /// - `gender`: The player's gender
+    /// - `preferred_language`: The player's preferred language
+    /// - `pronoun`: The player's preferred pronouns. This is only used in the case of Spanish
+    ///   speaking non-binary players; all other players' pronouns will match with their gender
+    ///   automatically.
     ///
     /// ### Returns
     /// The created player's safe information.
@@ -46,18 +51,14 @@ impl PlayerService {
         email: &str,
         gender: &Gender,
         preferred_language: &LanguagePreference,
-        pronoun: &Option<Pronoun>,
+        pronoun: &Option<Gender>,
     ) -> DBoResult<SafePlayerResponse> {
-        let assumed_pronoun = match gender {
-            Gender::Male => Pronoun::Masculine,
-            Gender::Female => Pronoun::Feminine,
-            Gender::Other => match preferred_language {
-                LanguagePreference::English => Pronoun::Neutral,
-                LanguagePreference::Spanish => match pronoun {
-                    Some(p) => p.clone(),
-                    None => Pronoun::Neutral,
-                },
+        let assumed_pronoun = match (gender, preferred_language) {
+            (Gender::Other, LanguagePreference::Spanish) => match pronoun {
+                Some(p) => p,
+                None => gender,
             },
+            _ => gender,
         };
 
         let player = Player::new(
@@ -66,14 +67,21 @@ impl PlayerService {
             email,
             gender,
             preferred_language,
-            &assumed_pronoun,
+            assumed_pronoun,
         )?;
         players.insert(&player).await?;
 
         let token = ConfirmationToken::new(player.id());
         tokens.insert(&token).await?;
 
-        send_confirmation_email(email, username, token.id()).await?;
+        send_registration_email(
+            email,
+            username,
+            token.id(),
+            preferred_language,
+            assumed_pronoun,
+        )
+        .await?;
 
         Ok(SafePlayerResponse::from(&player))
     }

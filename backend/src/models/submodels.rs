@@ -7,19 +7,21 @@ use serde::{Deserialize, Serialize};
 // Player Sub-Models //
 // ///////////////// //
 
-/// The player's preferred gender.
+/// The player's preferred gender. In the case of Spanish-speaking non-binary players, they can also
+/// have a pronoun field of type Gender, which may not agree with their specified Gender. This is
+/// important, as the "-e" endings for non-binary people is not universally accepted or recognized.
 #[derive(Clone, Deserialize, Serialize)]
 pub enum Gender {
     /// Player identifies as male (default to masculine pronouns).
-    #[serde(rename = "male")]
+    #[serde(rename = "m")]
     Male,
     /// Player identifies as female (default to feminine pronouns).
-    #[serde(rename = "female")]
+    #[serde(rename = "f")]
     Female,
     /// Player identifies as a non-binary gender (default to neutral pronouns for English-speaking
     /// players; for Spanish speaking players of this identity, we ask what pronouns they would
     /// prefer).
-    #[serde(rename = "other")]
+    #[serde(rename = "nb")]
     Other,
 }
 
@@ -32,21 +34,6 @@ pub enum LanguagePreference {
     /// Latin American Spanish
     #[serde(rename = "es")]
     Spanish,
-}
-
-/// How we should refer to this player in language; especially important for gendered language
-/// in Spanish translation.
-#[derive(Clone, Deserialize, Serialize)]
-pub enum Pronoun {
-    /// "¡Bienvenido, estimado jugador!"
-    #[serde(rename = "masculine")]
-    Masculine,
-    /// "¡Bienvenida, estimada jugadora!"
-    #[serde(rename = "feminine")]
-    Feminine,
-    /// "¡Bienvenide, estimade jugador!"
-    #[serde(rename = "neutral")]
-    Neutral,
 }
 
 /// Keeps track of a player's gameplay statistics.
@@ -63,6 +50,7 @@ pub struct PlayerStats {
 }
 
 impl PlayerStats {
+    /// The default PlayerStats for a new Player, for which all fields are initialized to 0.
     pub fn default() -> Self {
         Self {
             wins: 0,

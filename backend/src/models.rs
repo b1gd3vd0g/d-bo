@@ -19,7 +19,7 @@ use crate::{
     errors::DBoResult,
     models::{
         player_validation::validate_all,
-        submodels::{Gender, LanguagePreference, PlayerStats, Pronoun},
+        submodels::{Gender, LanguagePreference, PlayerStats},
     },
 };
 
@@ -76,7 +76,7 @@ pub struct Player {
     preferred_language: LanguagePreference,
     /// The player's preferred pronouns, specifically useful while translating to Spanish for
     /// players with `gender == Gender.Other`.
-    pronoun: Pronoun,
+    pronoun: Gender,
     /// The player's gameplay stats.
     stats: PlayerStats,
     /// The date of the player's last **successful** login.
@@ -104,7 +104,7 @@ impl Player {
         email: &str,
         gender: &Gender,
         preferred_language: &LanguagePreference,
-        pronoun: &Pronoun,
+        pronoun: &Gender,
     ) -> DBoResult<Self> {
         validate_all(username, password, email)?;
 

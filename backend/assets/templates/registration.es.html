@@ -1,0 +1,70 @@
+<html>
+
+<body style="
+      font-family: Verdana, Geneva, Tahoma, sans-serif;
+      margin: 0;
+      padding: 0;
+    ">
+    <header>
+        <h2 style="text-align: center;"> Bienvenid**o/a/e** a D-Bo, {{USERNAME}}!</h2>
+        <img src="cid:{{D_BO_LOGO}}" style="
+            width: 50%;
+            margin: auto;
+            display: block;
+            max-width: 300px;
+        " />
+    </header>
+    <main style="padding: 2em;">
+        <p>
+            ¡D-Bo es un juego de cartas digital que se usa para jugar en línea con amigos! Usted recibió este correo
+            porque se ha registrado para obtener una cuenta nueva.
+        </p>
+        <p>Complete la verificación de la cuenta haciendo clic en el botón:</p>
+        <a href="{{FRONTEND_URL}}/confirm-email?token_id={{TOKEN_ID}}" target="_blank" rel="noreferrer"
+            style="text-decoration: none;">
+            <div style="
+                background: lightblue;
+                padding: 1em 2em;
+                width: fit-content;
+                font-weight: bold;
+                border-radius: 1em;
+                margin: auto;
+                text-align: center;
+            ">
+                Confirme su dirección de correo electrónico
+            </div>
+        </a>
+        <div style="margin: 2em auto;">
+            <img src="cid:{{BIGDEVDOG_LOGO}}" style="
+            margin: 1em auto;
+            width: 85%;
+            max-width: 500px;
+            display: block;
+        " />
+            <small style="text-align: center; display: block;">
+                D-Bo es un producto de
+                <a href="https://bigdevdog.com" target="_blank" rel="noreferrer">BigDevDog</a>, un estudio de desarrollo
+                independiente.
+            </small>
+        </div>
+    </main>
+    <hr style="margin: 2em 0;" />
+    <footer style="padding: 1em 2em;">
+        <small>
+            Por favor, no responda a este correo, porque este buzón no se supervisa. Por asistencia adicional,
+            contáctese con el desarrollador Devin Peevy en
+            <a href="mailto:devin@bigdevdog.com">devin@bigdevdog.com</a>.
+        </small>
+        <br />
+        <br />
+        <small>
+            ¿Usted ha recibido este correo por error?
+            <a href="{{FRONTEND_URL}}/reject-email?token_id={{TOKEN_ID}}&lang=es" target="_blank" rel="noreferrer">
+                Haga clic aquí
+            </a>
+            para borrar toda su información de nuestro base de datos.
+        </small>
+    </footer>
+</body>
+
+</html>

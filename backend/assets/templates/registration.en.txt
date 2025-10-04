@@ -4,8 +4,8 @@ D-Bo is a digital board game platform where you can play online with friends! Yo
 
 Complete your account verification by following this link:
 
-{{FRONTEND_URL}}/confirm-email?token_id={{TOKEN_ID}}
+{{FRONTEND_URL}}/confirm-email?token_id={{TOKEN_ID}}&lang=en
 
 D-Bo is a product of BigDevDog, an independent development company. Visit our site at https://bigdevdog.com.
 
-Please do not reply to this email, as this mailbox is not monitored. For assistance, contact developer Devin Peevy at devin.peevy@outlook.com.
+Please do not reply to this email, as this mailbox is not monitored. For assistance, contact developer Devin Peevy at devin@bigdevdog.com.

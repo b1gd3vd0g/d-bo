@@ -1,7 +1,7 @@
 /// This module contains all the request bodies that are required in incoming HTTP requests.
 use serde::Deserialize;
 
-use crate::models::submodels::{Gender, LanguagePreference, Pronoun};
+use crate::models::submodels::{Gender, LanguagePreference};
 
 /// The required request body for registering a new player account.
 #[derive(Deserialize)]
@@ -17,7 +17,7 @@ pub struct PlayerRegistrationRequestBody {
     /// The player's preferred language
     preferred_language: LanguagePreference,
     /// The player's chosen pronouns
-    pronoun: Option<Pronoun>,
+    pronoun: Option<Gender>,
 }
 
 impl PlayerRegistrationRequestBody {
@@ -41,7 +41,7 @@ impl PlayerRegistrationRequestBody {
         &self.preferred_language
     }
 
-    pub fn pronoun(&self) -> &Option<Pronoun> {
+    pub fn pronoun(&self) -> &Option<Gender> {
         &self.pronoun
     }
 }

@@ -8,13 +8,13 @@
     <header>
         <h2 style="text-align: center;">Welcome to D-Bo, {{USERNAME}}!</h2>
         <img src="cid:{{D_BO_LOGO}}" style="
-            width: 50vw;
+            width: 50%;
             margin: auto;
             display: block;
             max-width: 300px;
         " />
     </header>
-    <main style="padding: 2em">
+    <main style="padding: 2em;">
         <p>
             D-Bo is a digital board game platform where you can play online with
             friends! You are receiving this email because you recently signed up for
@@ -22,7 +22,7 @@
         </p>
         <p>Complete your account verification by clicking the button:</p>
         <a href="{{FRONTEND_URL}}/confirm-email?token_id={{TOKEN_ID}}" target="_blank" rel="noreferrer"
-            style="text-decoration: none">
+            style="text-decoration: none;">
             <div style="
                 background: lightblue;
                 padding: 1em 2em;
@@ -30,32 +30,34 @@
                 font-weight: bold;
                 border-radius: 1em;
                 margin: auto;
+                text-align: center;
             ">
                 Confirm your email
             </div>
         </a>
-        <img src="cid:{{BIGDEVDOG_LOGO}}" style="
+        <div style="margin: 2em auto;">
+            <img src="cid:{{BIGDEVDOG_LOGO}}" style="
             margin: 1em auto;
-            width: 85vw;
+            width: 85%;
             max-width: 500px;
             display: block;
         " />
-        <small style="text-align: center; display: block;">
-            D-Bo is a product of
-            <a href="https://bigdevdog.com" target="_blank" rel="noreferrer">BigDevDog</a>, an independent development
-            company.
-        </small>
+            <small style="text-align: center; display: block;">
+                D-Bo is a product of
+                <a href="https://bigdevdog.com" target="_blank" rel="noreferrer">BigDevDog</a>, an independent
+                development
+                company.
+            </small>
+        </div>
     </main>
-    <hr />
-    <footer style="padding: 1em 2em">
+    <hr style="margin: 2em 0;" />
+    <footer style="padding: 1em 2em;">
         <small>
             Please do not reply to this email, as this mailbox is not monitored. For
             assistance, contact developer Devin Peevy at
             <a href="mailto:devin.peevy@outlook.com">devin.peevy@outlook.com</a>.
         </small>
-        <br />
-        <br />
-        <small>
+        <small style="margin-top: 2em;">
             Received this email by mistake?
             <a href="{{FRONTEND_URL}}/reject-email?token_id={{TOKEN_ID}}" target="_blank" rel="noreferrer">
                 Click here
