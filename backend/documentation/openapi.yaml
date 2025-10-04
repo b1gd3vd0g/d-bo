@@ -237,7 +237,7 @@ paths:
         - $ref: '#/components/parameters/PlayerId'
         - $ref: '#/components/parameters/TokenId'
       responses:
-        200:
+        204:
           description: The account has been confirmed successfully, allowing the player to start
             using D-Bo.
         404:
@@ -286,11 +286,17 @@ paths:
         - $ref: '#/components/parameters/PlayerId'
         - $ref: '#/components/parameters/TokenId'
       responses:
-        200:
+        204:
           description: The account has been wiped successfully from our database.
-        409:
+        403:
           description: The account has already been confirmed, and therefore cannot be deleted in 
             this way.
+        404:
+          description: The account could not be deleted because the token could not be found.
+        409:
+          description: The account could not be deleted because the token does not match the player.
+        500:
+          $ref: '#/components/responses/ServerSideError'
 
   /players/login:
     post:
