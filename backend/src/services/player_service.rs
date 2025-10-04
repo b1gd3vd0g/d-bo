@@ -156,6 +156,63 @@ impl PlayerService {
         Ok(())
     }
 
+    /// Reject the creation of a player account. Find a player by their id, and ensure that they are
+    /// not already confirmed; find the confirmation token by id, and ensure that it matches the
+    /// same player. Delete the player account, delete the token, and increment the counter. If the
+    /// player cannot be found, this request will succeed, as that was the point all along. Unlike
+    /// account confirmation, account rejection will succeed even if the token is *expired* after 15
+    /// minutes.
+    ///
+    /// ### Arguments
+    /// - `players`: The Player repository
+    /// - `tokens`: The ConfirmationToken repository
+    /// - `counters`: The Counter repository
+    /// - `player_id`: The player's unique identifier
+    /// - `token_id`: The token's unique identifier
+    ///
+    /// ### Errors
+    /// - `InternalConflict` if the account is already confirmed
+    /// - `MissingDocument` if the token cannot be found
+    /// - `RelationalConflict` if the player account does not match the token
+    /// - `AdapterError` if any database query should fail
+    pub async fn reject_player_account(
+        players: &Repository<Player>,
+        tokens: &Repository<ConfirmationToken>,
+        counters: &Repository<Counter>,
+        player_id: &str,
+        token_id: &str,
+    ) -> DBoResult<()> {
+        let player = match players.find_by_id(player_id).await? {
+            Some(p) => p,
+            None => return Ok(()),
+        };
+
+        if player.confirmed() {
+            return Err(DBoError::InternalConflict);
+        }
+
+        let token = match tokens.find_by_id(token_id).await? {
+            Some(t) => t,
+            None => {
+                return Err(DBoError::MissingDocument(String::from(
+                    ConfirmationToken::collection_name(),
+                )));
+            }
+        };
+
+        if token.player_id() != player.id() {
+            return Err(DBoError::RelationalConflict);
+        }
+
+        players.delete(player.id()).await?;
+        tokens.delete(token.id()).await?;
+        counters
+            .increment_counter(CounterId::AccountsRejected)
+            .await?;
+
+        Ok(())
+    }
+
     /// Attempt to verify a player's login information. Create an access token and a refresh token
     /// for secure authentication. Store the refresh token in the database.
     ///

@@ -19,6 +19,13 @@ use crate::{
     services::player_service::PlayerService,
 };
 
+fn unexpected_error(error: DBoError, request_name: &str) -> Response {
+    eprintln!("An unexpected DBoError occurred during {}!", request_name);
+    eprintln!("This should not happen!");
+    eprintln!("{:?}", error);
+    (StatusCode::INTERNAL_SERVER_ERROR).into_response()
+}
+
 /// Handle a request to create a new player account.
 ///
 /// ### Arguments
@@ -64,12 +71,7 @@ pub async fn handle_player_registration(
             )
                 .into_response(),
             DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
-            _ => {
-                eprintln!("An unexpected DBoError occurred during player registration!");
-                eprintln!("This should not happen!");
-                eprintln!("{:?}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR).into_response()
-            }
+            _ => unexpected_error(e, "player registration"),
         },
     }
 }
@@ -88,7 +90,7 @@ pub async fn handle_player_account_confirmation(
     .await;
 
     match outcome {
-        Ok(()) => (StatusCode::OK).into_response(),
+        Ok(()) => (StatusCode::NO_CONTENT).into_response(),
         Err(e) => match e {
             DBoError::MissingDocument(collection) => (
                 StatusCode::NOT_FOUND,
@@ -99,12 +101,32 @@ pub async fn handle_player_account_confirmation(
             DBoError::RelationalConflict => (StatusCode::FORBIDDEN).into_response(),
             DBoError::TokenExpired => (StatusCode::GONE).into_response(),
             DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
-            _ => {
-                eprintln!("An unexpected DBoError occurred during account confirmation!");
-                eprintln!("This should not happen!");
-                eprintln!("{:?}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR).into_response()
-            }
+            _ => unexpected_error(e, "account confirmation"),
+        },
+    }
+}
+
+pub async fn handle_player_account_rejection(
+    State(repos): State<Repositories>,
+    Path((player_id, token_id)): Path<(String, String)>,
+) -> Response {
+    let outcome = PlayerService::reject_player_account(
+        repos.players(),
+        repos.confirmation_tokens(),
+        repos.counters(),
+        &player_id,
+        &token_id,
+    )
+    .await;
+
+    match outcome {
+        Ok(()) => (StatusCode::NO_CONTENT).into_response(),
+        Err(e) => match e {
+            DBoError::InternalConflict => (StatusCode::FORBIDDEN).into_response(),
+            DBoError::MissingDocument(_) => (StatusCode::NOT_FOUND).into_response(),
+            DBoError::RelationalConflict => (StatusCode::CONFLICT).into_response(),
+            DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
+            _ => unexpected_error(e, "account rejection"),
         },
     }
 }
@@ -143,12 +165,7 @@ pub async fn handle_player_login(
         Err(e) => match e {
             DBoError::AuthenticationFailure => (StatusCode::UNAUTHORIZED).into_response(),
             DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
-            _ => {
-                eprintln!("An unexpected DBoError occurred during player login!");
-                eprintln!("This should not happen!");
-                eprintln!("{:?}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR).into_response()
-            }
+            _ => unexpected_error(e, "player login"),
         },
     }
 }
