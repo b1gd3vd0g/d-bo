@@ -85,7 +85,9 @@ impl PlayerService {
         )
         .await?;
 
-        counters.increment_counter(CounterId::Pings).await?;
+        counters
+            .increment_counter(CounterId::AccountsRegistered)
+            .await?;
 
         Ok(SafePlayerResponse::from(&player))
     }
