@@ -5,7 +5,7 @@
 // NOTE: it is possible that in the future I will add a function `decrement_counter()`, but it is
 // not currently required for anything I plan to do.
 
-use mongodb::bson::doc;
+use mongodb::{bson::doc, options::ReturnDocument};
 
 use crate::{
     adapters::repositories::{Repository, counter_id::CounterId},
@@ -30,6 +30,7 @@ impl Repository<Counter> {
                 doc! { "$inc": { "count": 1 } },
             )
             .upsert(true)
+            .return_document(ReturnDocument::After)
             .await?
             .unwrap()
             .count())
