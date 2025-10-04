@@ -21,7 +21,7 @@
             an account.
         </p>
         <p>Complete your account verification by clicking the button:</p>
-        <a href="{{FRONTEND_URL}}/confirm-email?token_id={{TOKEN_ID}}" target="_blank" rel="noreferrer"
+        <a href="{{FRONTEND_URL}}/confirm-email/{{PLAYER_ID}}/{{TOKEN_ID}}?lang=en" target="_blank" rel="noreferrer"
             style="text-decoration: none;">
             <div style="
                 background: lightblue;
@@ -59,7 +59,7 @@
         </small>
         <small style="margin-top: 2em;">
             Received this email by mistake?
-            <a href="{{FRONTEND_URL}}/reject-email?token_id={{TOKEN_ID}}" target="_blank" rel="noreferrer">
+            <a href="{{FRONTEND_URL}}/reject-email/{{PLAYER_ID}}/{{TOKEN_ID}}?lang=en" target="_blank" rel="noreferrer">
                 Click here
             </a>
             to remove any information from our database.

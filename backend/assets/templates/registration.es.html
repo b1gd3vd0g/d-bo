@@ -20,7 +20,7 @@
             porque se ha registrado para obtener una cuenta nueva.
         </p>
         <p>Complete la verificación de la cuenta haciendo clic en el botón:</p>
-        <a href="{{FRONTEND_URL}}/confirm-email?token_id={{TOKEN_ID}}" target="_blank" rel="noreferrer"
+        <a href="{{FRONTEND_URL}}/confirm-email/{{PLAYER_ID}}/{{TOKEN_ID}}?lang=es" target="_blank" rel="noreferrer"
             style="text-decoration: none;">
             <div style="
                 background: lightblue;
@@ -59,7 +59,7 @@
         <br />
         <small>
             ¿Usted ha recibido este correo por error?
-            <a href="{{FRONTEND_URL}}/reject-email?token_id={{TOKEN_ID}}&lang=es" target="_blank" rel="noreferrer">
+            <a href="{{FRONTEND_URL}}/reject-email/{{PLAYER_ID}}/{{TOKEN_ID}}?lang=es" target="_blank" rel="noreferrer">
                 Haga clic aquí
             </a>
             para borrar toda su información de nuestro base de datos.
