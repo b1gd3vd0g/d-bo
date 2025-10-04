@@ -222,7 +222,7 @@ paths:
         During account registration, a link is provided in the registration email to a page where 
         the player can click a button to confirm their account and start playing. If the **token** 
         represented by the *token_id* path parameter is found to be **expired**, the player will
-        have to request a new token, receive a new email, and follow that link within 15 minutes**.
+        have to request a new token, receive a new email, and follow that link within 15 minutes.
 
         It is important to note: confirmation tokens and *unconfirmed* player accounts are
         automatically deleted from the database after **two days** - after two days without
@@ -232,8 +232,7 @@ paths:
         player account in the database at any time. So, if a new email is sent with a new token
         link, **all previously provided links** will be rendered obsolete.
 
-        This request will toggle the **confirmed** flag for the player to `true`, and will delete
-        the confirmation token from the database.
+        Upon success, the used confirmation token will be deleted from the database.
       parameters:
         - $ref: '#/components/parameters/PlayerId'
         - $ref: '#/components/parameters/TokenId'
@@ -241,6 +240,27 @@ paths:
         200:
           description: The account has been confirmed successfully, allowing the player to start
             using D-Bo.
+        404:
+          description: The account could not be confirmed because a document was missing.
+          content:
+            application/json:
+              schema:
+                description: Tells the client from which collection the document is missing.
+                type: object
+                properties:
+                  missing:
+                    type: string
+                    enum:
+                      - players
+                      - confirmation-tokens
+        403:
+          description: The player account does not match up with the token.
+        409:
+          description: The player account has already been confirmed.
+        410:
+          description: The confirmation token has expired after 15 minutes.
+        500:
+          $ref: '#/components/responses/ServerSideError'
 
     delete:
       tags: 
@@ -368,7 +388,7 @@ components:
       required: true
       schema:
         type: string
-      description: A randomly generated UUID v4 identifying the player.
+      description: A UUID v4 identifying the player.
       example: 9334c148-bff1-47b2-9e56-7469b788064e
     TokenId:
       in: path
@@ -376,7 +396,7 @@ components:
       required: true
       schema:
         type: string
-      description: A randomly generated UUID v4 identifying the confirmation token.
+      description: A UUID v4 identifying the confirmation token.
       example: 06d08b8c-c677-441f-9599-afd6f505c517
   responses:
     ServerSideError:
