@@ -71,17 +71,6 @@ impl<T: Model + Send + Sync> Repository<T> {
             .find_one_and_delete(doc! { T::id_field(): id })
             .await?)
     }
-
-    /// Counts the documents stored in the repository.
-    ///
-    /// ### Returns
-    /// The number of present documents
-    ///
-    /// ### Errors
-    /// - `AdapterError` if the query fails
-    pub async fn count(&self) -> DBoResult<u64> {
-        Ok(self.collection.count_documents(doc! {}).await?)
-    }
 }
 
 /// A struct containing all of the repositories needed by the application.

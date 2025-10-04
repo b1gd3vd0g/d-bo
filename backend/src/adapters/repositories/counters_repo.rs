@@ -1,9 +1,9 @@
-//! This module provides unique functionality over the counter repository. There are only two
-//! functionalities associated with Counters - incrementing them when certain actions are
-//! performed, and checking their stored value.
+//! This module provides unique functionality over the counter repository. The only current function
+//! for a Counter is to increment it by 1.
 
-// NOTE: it is possible that in the future I will add a function `decrement_counter()`, but it is
-// not currently required for anything I plan to do.
+// NOTE: Future enhancements to the application may include functionalities to fetch one or more
+// counters from the database, or to decrement a counter. These functions are not currently needed for
+// the app, so are not yet included.
 
 use mongodb::{bson::doc, options::ReturnDocument};
 
@@ -34,24 +34,5 @@ impl Repository<Counter> {
             .await?
             .unwrap()
             .count())
-    }
-
-    /// Check the `count` of a Counter.
-    ///
-    /// ### Returns
-    /// The `count` of the Counter, or `0` if it cannot be found
-    ///
-    /// ### Errors
-    /// `AdapterError` if the query fails
-    pub async fn check_counter(&self, id: CounterId) -> DBoResult<u64> {
-        let counter = self
-            .collection
-            .find_one(doc! { Counter::id_field(): &id.to_string() })
-            .await?;
-
-        Ok(match counter {
-            Some(c) => c.count(),
-            None => 0,
-        })
     }
 }
