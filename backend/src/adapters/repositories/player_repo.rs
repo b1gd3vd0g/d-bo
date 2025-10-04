@@ -5,7 +5,7 @@ use mongodb::bson::doc;
 use crate::{
     adapters::{mongo::case_insensitive_collation, repositories::Repository},
     errors::{DBoError, DBoResult},
-    models::Player,
+    models::{Collectible, Identifiable, Player},
 };
 
 impl Repository<Player> {
@@ -93,6 +93,31 @@ impl Repository<Player> {
         } else {
             self.collection.insert_one(player).await?;
             Ok(())
+        }
+    }
+
+    /// Confirm a player account. This function will work fine if the player is already confirmed.
+    ///
+    /// ### Arguments
+    /// `player_id`: The player's unique identifier
+    ///
+    /// ### Errors
+    /// - `MissingDocument` if the player cannot be found
+    /// - `AdapterError` if the query fails
+    pub async fn confirm(&self, player_id: &str) -> DBoResult<()> {
+        let player = self
+            .collection
+            .update_one(
+                doc! { Player::id_field(): player_id },
+                doc! { "$set": { "confirmed": true } },
+            )
+            .await?;
+
+        match player.modified_count {
+            0 => Err(DBoError::MissingDocument(String::from(
+                Player::collection_name(),
+            ))),
+            _ => Ok(()),
         }
     }
 }

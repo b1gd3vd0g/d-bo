@@ -22,10 +22,18 @@ pub enum DBoError {
     AdapterError,
     /// The player could not be authenticated.
     AuthenticationFailure,
+    /// An update to a document failed due to a conflicting state within that same document. The
+    /// collection name is provided in the String.
+    InternalConflict,
     /// A user has tried to create a new account with an invalid field.
     InvalidPlayerInfo(InputValidationResponse),
     /// A provided token is invalid.
     InvalidToken,
+    /// A request has failed because a document cannot be found. The collection name is provided in
+    /// the String.
+    MissingDocument(String),
+    /// An update to a document failed due to a conflicting state with a related document.
+    RelationalConflict,
     /// Some kind of token (be it an email confirmation token, JWT, etc.) is expired.
     TokenExpired,
     /// A user has tried to create a new account, but its unique fields are already in use.

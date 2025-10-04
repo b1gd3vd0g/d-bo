@@ -2,7 +2,7 @@
 
 use axum::{
     Json,
-    extract::State,
+    extract::{Path, State},
     http::{HeaderMap, StatusCode, header::SET_COOKIE},
     response::{IntoResponse, Response},
 };
@@ -14,7 +14,7 @@ use crate::{
     errors::DBoError,
     handlers::{
         request_bodies::{PlayerLoginRequestBody, PlayerRegistrationRequestBody},
-        responses::{AccessTokenResponse, ExistingFieldViolationResponse},
+        responses::{AccessTokenResponse, ExistingFieldViolationResponse, MissingDocumentResponse},
     },
     services::player_service::PlayerService,
 };
@@ -66,6 +66,41 @@ pub async fn handle_player_registration(
             DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
             _ => {
                 eprintln!("An unexpected DBoError occurred during player registration!");
+                eprintln!("This should not happen!");
+                eprintln!("{:?}", e);
+                (StatusCode::INTERNAL_SERVER_ERROR).into_response()
+            }
+        },
+    }
+}
+
+pub async fn handle_player_account_confirmation(
+    State(repos): State<Repositories>,
+    Path((player_id, token_id)): Path<(String, String)>,
+) -> Response {
+    let outcome = PlayerService::confirm_player_account(
+        repos.players(),
+        repos.confirmation_tokens(),
+        repos.counters(),
+        &player_id,
+        &token_id,
+    )
+    .await;
+
+    match outcome {
+        Ok(()) => (StatusCode::OK).into_response(),
+        Err(e) => match e {
+            DBoError::MissingDocument(collection) => (
+                StatusCode::NOT_FOUND,
+                Json(MissingDocumentResponse::new(&collection)),
+            )
+                .into_response(),
+            DBoError::InternalConflict => (StatusCode::CONFLICT).into_response(),
+            DBoError::RelationalConflict => (StatusCode::FORBIDDEN).into_response(),
+            DBoError::TokenExpired => (StatusCode::GONE).into_response(),
+            DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
+            _ => {
+                eprintln!("An unexpected DBoError occurred during account confirmation!");
                 eprintln!("This should not happen!");
                 eprintln!("{:?}", e);
                 (StatusCode::INTERNAL_SERVER_ERROR).into_response()

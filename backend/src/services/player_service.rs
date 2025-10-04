@@ -10,7 +10,7 @@ use crate::{
     errors::{DBoError, DBoResult},
     handlers::responses::SafePlayerResponse,
     models::{
-        ConfirmationToken, Counter, Identifiable, Player, RefreshToken,
+        Collectible, ConfirmationToken, Counter, Identifiable, Player, RefreshToken,
         submodels::{Gender, LanguagePreference},
     },
     services::types::LoginTokenInfo,
@@ -90,6 +90,70 @@ impl PlayerService {
             .await?;
 
         Ok(SafePlayerResponse::from(&player))
+    }
+
+    /// Confirm a player's account. Find a player by their id, ensure that the account is not
+    /// already confirmed; find the token by its id, ensure that it matches the same player, and
+    /// that it is unexpired; delete the token, confirm the player's account, and increment the
+    /// counter.
+    ///
+    /// ### Arguments
+    /// - `players`: The Player repository
+    /// - `tokens`: The Confirmation Token repository
+    /// - `counters`: The Counters repository
+    /// - `player_id`: The player's unique identifier
+    /// - `token_id`: The token's unique identifier
+    ///
+    /// ### Errors
+    /// - `MissingDocument` if either the player or the token could not be found
+    /// - `InternalConflict` if the player account is already confirmed
+    /// - `RelationalConflict` if the token does not match the player
+    /// - `TokenExpired` if the confirmation token is expired (older than 15 minutes)
+    /// - `AdapterError` if any database query should fail
+    pub async fn confirm_player_account(
+        players: &Repository<Player>,
+        tokens: &Repository<ConfirmationToken>,
+        counters: &Repository<Counter>,
+        player_id: &str,
+        token_id: &str,
+    ) -> DBoResult<()> {
+        let player = match players.find_by_id(player_id).await? {
+            Some(p) => p,
+            None => {
+                return Err(DBoError::MissingDocument(String::from(
+                    Player::collection_name(),
+                )));
+            }
+        };
+
+        if player.confirmed() {
+            return Err(DBoError::InternalConflict);
+        }
+
+        let token = match tokens.find_by_id(token_id).await? {
+            Some(t) => t,
+            None => {
+                return Err(DBoError::MissingDocument(String::from(
+                    ConfirmationToken::collection_name(),
+                )));
+            }
+        };
+
+        if token.player_id() != player.id() {
+            return Err(DBoError::RelationalConflict);
+        }
+
+        if token.expired() {
+            return Err(DBoError::TokenExpired);
+        }
+
+        tokens.delete(token.id()).await?;
+        players.confirm(player.id()).await?;
+        counters
+            .increment_counter(CounterId::AccountsConfirmed)
+            .await?;
+
+        Ok(())
     }
 
     /// Attempt to verify a player's login information. Create an access token and a refresh token

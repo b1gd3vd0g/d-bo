@@ -5,7 +5,9 @@ use tower_http::cors::{Any, CorsLayer};
 
 use crate::{
     adapters::repositories::Repositories,
-    handlers::player_handlers::{handle_player_login, handle_player_registration},
+    handlers::player_handlers::{
+        handle_player_account_confirmation, handle_player_login, handle_player_registration,
+    },
 };
 
 /// Return the CORS configuration for the application.
@@ -21,6 +23,10 @@ fn cors() -> CorsLayer {
 pub fn router() -> Router<Repositories> {
     Router::new()
         .route("/players", post(handle_player_registration))
+        .route(
+            "/players/{player_id}/confirm/{token_id}",
+            post(handle_player_account_confirmation),
+        )
         .route("/players/login", post(handle_player_login))
         .layer(cors())
 }

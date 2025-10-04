@@ -11,6 +11,7 @@ pub mod submodels;
 use std::array;
 
 use bson::DateTime;
+use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -160,6 +161,10 @@ impl Player {
     pub fn stats(&self) -> &PlayerStats {
         &self.stats
     }
+
+    pub fn confirmed(&self) -> bool {
+        self.confirmed
+    }
 }
 
 impl Collectible for Player {
@@ -204,6 +209,10 @@ impl ConfirmationToken {
 
     pub fn player_id(&self) -> &str {
         &self.player_id
+    }
+
+    pub fn expired(&self) -> bool {
+        Utc::now() - self.created.to_chrono() > Duration::seconds(60 * 15)
     }
 }
 

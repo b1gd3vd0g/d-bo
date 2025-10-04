@@ -123,3 +123,18 @@ impl AccessTokenResponse {
         }
     }
 }
+
+/// An error response indicating that a document could not be found.
+#[derive(Serialize)]
+pub struct MissingDocumentResponse {
+    /// The collection from which the missing document is absent.
+    missing: String,
+}
+
+impl MissingDocumentResponse {
+    pub fn new(collection: &str) -> Self {
+        Self {
+            missing: String::from(collection),
+        }
+    }
+}
