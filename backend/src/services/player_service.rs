@@ -2,7 +2,7 @@
 
 use crate::{
     adapters::{
-        email::send_registration_email,
+        email::{send_lockout_email, send_registration_email},
         hashing::{generate_secret, verify_secret},
         jwt::generate_access_token,
         repositories::{Repository, counter_id::CounterId},
@@ -216,7 +216,8 @@ impl PlayerService {
     /// Attempt to verify a player's login information. Find the player by username/email, and
     /// ensure that the account is not currently locked. Check the password against the hash in the
     /// database - if it does not match, increment the `failed_login` count, locking the player out
-    /// if that count exceeds 4.
+    /// if that count exceeds 4. If the account becomes locked out due to this login attempt, send
+    /// an email to the player notifying them that their account has been locked out.
     ///
     /// Upon a login success, generate an access token (a JWT good for 15 minutes) to authenticate
     /// the player. Then generate a persistent refresh token in the database, good for 30 days.
@@ -238,7 +239,8 @@ impl PlayerService {
     /// - `MissingDocument` in the *extremely* unlikely case that the player document gets deleted
     ///   midway through this request and cannot be found when trying to update it.
     /// - `AdapterError` if a database query fails, if the password or refresh token
-    ///   secret cannot be hashed, or if the access JWT cannot be created.
+    ///   secret cannot be hashed, if the access JWT cannot be created, or if the lockout email
+    ///   fails to be sent.
     pub async fn login(
         players: &Repository<Player>,
         tokens: &Repository<RefreshToken>,
@@ -270,6 +272,14 @@ impl PlayerService {
             let lockout = players.increment_failed_logins(player.id()).await?;
 
             if let Some(time) = lockout {
+                send_lockout_email(
+                    player.email(),
+                    player.username(),
+                    player.failed_logins() + 1,
+                    &time.to_chrono().to_rfc3339(),
+                    player.preferred_language(),
+                )
+                .await?;
                 return Err(DBoError::AccountLocked(time.to_chrono()));
             } else {
                 return Err(DBoError::AuthenticationFailure);
