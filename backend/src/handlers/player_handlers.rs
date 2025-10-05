@@ -14,7 +14,10 @@ use crate::{
     errors::DBoError,
     handlers::{
         request_bodies::{PlayerLoginRequestBody, PlayerRegistrationRequestBody},
-        responses::{AccessTokenResponse, ExistingFieldViolationResponse, MissingDocumentResponse},
+        responses::{
+            AccessTokenResponse, AccountLockedResponse, ExistingFieldViolationResponse,
+            MissingDocumentResponse,
+        },
     },
     services::player_service::PlayerService,
 };
@@ -138,6 +141,7 @@ pub async fn handle_player_login(
     let outcome = PlayerService::login(
         repos.players(),
         repos.refresh_tokens(),
+        repos.counters(),
         &body.username_or_email,
         &body.password,
     )
@@ -163,7 +167,15 @@ pub async fn handle_player_login(
                 .into_response()
         }
         Err(e) => match e {
-            DBoError::AuthenticationFailure => (StatusCode::UNAUTHORIZED).into_response(),
+            DBoError::AuthenticationFailure | DBoError::MissingDocument(_) => {
+                (StatusCode::UNAUTHORIZED).into_response()
+            }
+            DBoError::InternalConflict => (StatusCode::CONFLICT).into_response(),
+            DBoError::AccountLocked(time) => (
+                StatusCode::FORBIDDEN,
+                Json(AccountLockedResponse::new(time)),
+            )
+                .into_response(),
             DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
             _ => unexpected_error(e, "player login"),
         },

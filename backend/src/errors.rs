@@ -9,6 +9,7 @@
 //! annotations.
 
 use argon2::password_hash::Error as HashingError;
+use chrono::{DateTime, Utc};
 use jsonwebtoken::errors::{Error as JwtError, ErrorKind as JwtErrorKind};
 use lettre::{error::Error as LettreError, transport::smtp::Error as SmtpError};
 use mongodb::error::Error as MongoError;
@@ -18,6 +19,8 @@ use crate::handlers::responses::InputValidationResponse;
 /// Encompasses all possible errors that may occur within the D-Bo application.
 #[derive(Debug)]
 pub enum DBoError {
+    /// The player account is currently locked.
+    AccountLocked(DateTime<Utc>),
     /// An error has occurred within an adapter function.
     AdapterError,
     /// The player could not be authenticated.

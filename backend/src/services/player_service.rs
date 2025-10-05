@@ -213,8 +213,13 @@ impl PlayerService {
         Ok(())
     }
 
-    /// Attempt to verify a player's login information. Create an access token and a refresh token
-    /// for secure authentication. Store the refresh token in the database.
+    /// Attempt to verify a player's login information. Find the player by username/email, and
+    /// ensure that the account is not currently locked. Check the password against the hash in the
+    /// database - if it does not match, increment the `failed_login` count, locking the player out
+    /// if that count exceeds 4.
+    ///
+    /// Upon a login success, generate an access token (a JWT good for 15 minutes) to authenticate
+    /// the player. Then generate a persistent refresh token in the database, good for 30 days.
     ///
     /// ### Arguments
     /// - `players`: The player repository
@@ -223,35 +228,62 @@ impl PlayerService {
     /// - `password`: The player's password
     ///
     /// ### Returns
-    /// The information related to the created authentication tokens
+    /// The information related to both of the created authentication tokens
     ///
     /// ### Errors
     /// - `AuthenticationFailure` if the username/email and password do not match our records
+    /// - `InternalConflict` if the account is unconfirmed.
+    /// - `AccountLocked` if either the account is already locked, or if authentication failed for a
+    ///   fifth (or greater) time, resulting in a new lockout.
+    /// - `MissingDocument` in the *extremely* unlikely case that the player document gets deleted
+    ///   midway through this request and cannot be found when trying to update it.
     /// - `AdapterError` if a database query fails, if the password or refresh token
-    ///   secret cannot be hashed, or if the access token cannot be created.
+    ///   secret cannot be hashed, or if the access JWT cannot be created.
     pub async fn login(
         players: &Repository<Player>,
         tokens: &Repository<RefreshToken>,
+        counters: &Repository<Counter>,
         username_or_email: &str,
         password: &str,
     ) -> DBoResult<LoginTokenInfo> {
-        let option = players.find_by_username_or_email(username_or_email).await?;
-
-        let player = if let Some(p) = option {
-            p
-        } else {
-            return Err(DBoError::AuthenticationFailure);
+        let player = match players.find_by_username_or_email(username_or_email).await? {
+            Some(p) => p,
+            None => {
+                counters.increment_counter(CounterId::FailedLogins).await?;
+                return Err(DBoError::AuthenticationFailure);
+            }
         };
 
+        if !player.confirmed() {
+            return Err(DBoError::InternalConflict);
+        }
+
+        if player.locked() {
+            return Err(DBoError::AccountLocked(
+                player.locked_until().unwrap().to_chrono(),
+            ));
+        }
+
         if !verify_secret(password, player.password())? {
-            return Err(DBoError::AuthenticationFailure);
+            counters.increment_counter(CounterId::FailedLogins).await?;
+
+            let lockout = players.increment_failed_logins(player.id()).await?;
+
+            if let Some(time) = lockout {
+                return Err(DBoError::AccountLocked(time.to_chrono()));
+            } else {
+                return Err(DBoError::AuthenticationFailure);
+            }
         }
 
         let access_token = generate_access_token(player.id())?;
-        let refresh_secret = generate_secret();
 
+        let refresh_secret = generate_secret();
         let refresh_token = RefreshToken::new(player.id(), &refresh_secret)?;
+
         tokens.insert(&refresh_token).await?;
+        players.record_successful_login(player.id()).await?;
+        counters.increment_counter(CounterId::Logins).await?;
 
         Ok(LoginTokenInfo::new(
             &access_token,

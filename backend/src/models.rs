@@ -165,6 +165,22 @@ impl Player {
     pub fn confirmed(&self) -> bool {
         self.confirmed
     }
+
+    pub fn failed_logins(&self) -> u8 {
+        self.failed_logins
+    }
+
+    pub fn locked_until(&self) -> &Option<DateTime> {
+        &self.locked_until
+    }
+
+    pub fn locked(&self) -> bool {
+        if let Some(time) = self.locked_until {
+            time.to_chrono() > Utc::now()
+        } else {
+            false
+        }
+    }
 }
 
 impl Collectible for Player {

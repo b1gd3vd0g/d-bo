@@ -1,6 +1,8 @@
 //! This module provides unique functionality for the player repository.
 
-use mongodb::bson::doc;
+use bson::DateTime;
+use chrono::{Duration, Utc};
+use mongodb::{bson::doc, options::ReturnDocument};
 
 use crate::{
     adapters::{mongo::case_insensitive_collation, repositories::Repository},
@@ -105,7 +107,7 @@ impl Repository<Player> {
     /// - `MissingDocument` if the player cannot be found
     /// - `AdapterError` if the query fails
     pub async fn confirm(&self, player_id: &str) -> DBoResult<()> {
-        let player = self
+        let update = self
             .collection
             .update_one(
                 doc! { Player::id_field(): player_id },
@@ -113,7 +115,95 @@ impl Repository<Player> {
             )
             .await?;
 
-        match player.modified_count {
+        match update.matched_count {
+            0 => Err(DBoError::MissingDocument(String::from(
+                Player::collection_name(),
+            ))),
+            _ => Ok(()),
+        }
+    }
+
+    /// Increment the number of failed logins on a player account. If the number of failed logins
+    /// then meets or exceeds 5, it will lock the account for 15 minutes * `failed_logins - 4`.
+    ///
+    /// ### Arguments
+    /// - `player_id`: The player's unique identifier
+    ///
+    /// ### Returns
+    /// The date until which the account is locked
+    ///
+    /// ### Errors
+    /// - `MissingDocument` if the account cannot be found
+    /// - `AdapterError` if any query should fail
+    pub async fn increment_failed_logins(&self, player_id: &str) -> DBoResult<Option<DateTime>> {
+        let player = match self.find_by_id(player_id).await? {
+            Some(p) => p,
+            None => {
+                return Err(DBoError::MissingDocument(String::from(
+                    Player::collection_name(),
+                )));
+            }
+        };
+
+        let failed_logins = player.failed_logins() + 1;
+        let lockout_end = if failed_logins < 5 {
+            None
+        } else {
+            let lockout_time = Duration::minutes(15) * (failed_logins as i32 - 4);
+            Some(DateTime::from_chrono(Utc::now() + lockout_time))
+        };
+
+        self
+            .collection
+            .find_one_and_update(
+                doc! { Player::id_field(): player_id },
+                doc! { "$set": { "failed_logins": failed_logins as i32, "locked_until": lockout_end }},
+            )
+            .return_document(ReturnDocument::After)
+            .await?;
+
+        Ok(lockout_end)
+    }
+
+    /// Record a successful login in the database, resetting the `failed_logins` field to `0` and
+    /// `locked_until` back to `None`.
+    ///
+    /// ### Arguments
+    /// - `player_id`: The unique identifier of the player
+    ///
+    /// ### Errors
+    /// - `MissingDocument` if the player cannot be found
+    /// - `AccountLocked` if the account is currently locked
+    /// - `AdapterError` if a query fails
+    pub async fn record_successful_login(&self, player_id: &str) -> DBoResult<()> {
+        let player = match self.find_by_id(player_id).await? {
+            Some(p) => p,
+            None => {
+                return Err(DBoError::MissingDocument(String::from(
+                    Player::collection_name(),
+                )));
+            }
+        };
+
+        if player.locked() {
+            return Err(DBoError::AccountLocked(
+                player.locked_until().unwrap().to_chrono(),
+            ));
+        }
+
+        let update = self
+            .collection
+            .update_one(
+                doc! { Player::id_field(): player_id },
+                doc! { "$set": {
+                    "last_login": DateTime::now(),
+                    "failed_logins": 0,
+                    "locked_until": None::<DateTime>
+                } },
+            )
+            .await?;
+
+        match update.matched_count {
             0 => Err(DBoError::MissingDocument(String::from(
                 Player::collection_name(),
             ))),
