@@ -57,10 +57,11 @@ For a detailed breakdown of planned steps and progress, see [ROADMAP.md](./ROADM
 | ------------ | ------- | ------------------------------------------ |
 | argon2       | 0.5.3   | Secure password hashing                    |
 | axum         | 0.8.4   | Web framework for REST API                 |
-| axum_extra   | 0.10.1  | Cookie functionality                       |
+| axum-extra   | 0.10.1  | Cookie functionality                       |
 | base64       | 0.22.1  | Base 64 encoding                           |
 | bson         | 2.15.0  | BSON support with Chrono integration       |
 | chrono       | 0.4.41  | Date/time handling with Serde              |
+| chrono-tz    | 0.10.4  | Time zone conversions                      |
 | dotenvy      | 0.15.7  | Environment variable loading               |
 | futures      | 0.3.31  | Async traits for iterating mongodb cursors |
 | jsonwebtoken | 9.3.1   | JWT creation and validation (HS256)        |
