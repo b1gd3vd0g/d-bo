@@ -1,0 +1,15 @@
+Hello, {{USERNAME}}.
+
+This email is being sent to inform you that your D-Bo account is currently locked out due to {{FAILED_LOGINS}} failed login attempts.
+
+Logging in (via username/password) will be blocked until the following time:
+
+{{END_LOCKOUT}}
+
+If this wasn't you, it is recommended to change your password as soon as possible.
+
+---
+
+D-Bo is a product of BigDevDog, an independent development studio. Visit our site at https://bigdevdog.com.
+
+Please do not reply to this email, as this mailbox is not monitored. For assistance, contact developer Devin Peevy at devin@bigdevdog.com.

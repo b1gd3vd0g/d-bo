@@ -1,0 +1,55 @@
+<html>
+
+<body style="
+      font-family: Verdana, Geneva, Tahoma, sans-serif;
+      margin: 0;
+      padding: 0;
+    ">
+    <header>
+        <h2 style="text-align: center;">Hello, {{USERNAME}}</h2>
+        <img src="cid:{{D_BO_LOGO}}" style="
+            width: 50%;
+            margin: auto;
+            display: block;
+            max-width: 300px;
+        " />
+    </header>
+    <main style="padding: 2em;">
+        <p>
+            This email is being sent to inform you that your D-Bo account is currently locked out due to
+            {{FAILED_LOGINS}} failed login attempts.
+        </p>
+        <p>
+            Logging in (via username/password) will be blocked until the following time:
+        </p>
+        <p style="font-weight: bold; font-size: 1.25em; text-align: center; margin: 2em 0;">
+            {{END_LOCKOUT}}
+        </p>
+        <p>
+            If this wasn't you, it is recommended to change your password as soon as possible.
+        </p>
+        <div style="margin: 2em auto;">
+            <img src="cid:{{BIGDEVDOG_LOGO}}" style="
+            margin: 1em auto;
+            width: 85%;
+            max-width: 500px;
+            display: block;
+        " />
+            <small style="text-align: center; display: block;">
+                D-Bo is a product of
+                <a href="https://bigdevdog.com" target="_blank" rel="noreferrer">BigDevDog</a>, an independent
+                development studio.
+            </small>
+        </div>
+    </main>
+    <hr style="margin: 2em 0;" />
+    <footer style="padding: 1em 2em;">
+        <small>
+            Please do not reply to this email, as this mailbox is not monitored. For
+            assistance, contact developer Devin Peevy at
+            <a href="mailto:devin.peevy@outlook.com">devin.peevy@outlook.com</a>.
+        </small>
+    </footer>
+</body>
+
+</html>

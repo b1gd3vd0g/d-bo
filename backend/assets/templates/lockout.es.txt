@@ -1,0 +1,15 @@
+Hola, {{USERNAME}}.
+
+Este correo se envía para informarle que su cuenta de D-Bo ha sido bloqueada tras {{FAILED_LOGINS}} intentos fallidos de ingreso.
+
+Los intentos de ingreso (por nombre de usuario y contraseña) estarán bloqueados hasta:
+
+{{END_LOCKOUT}}
+
+Si usted no realizó estos intentos, se recomienda cambiar su contraseña tan pronto como le sea posible.
+
+---
+
+D-Bo es un producto de BigDevDog, un estudio de desarrollo independiente. Visítenos en https://bigdevdog.com.
+
+Por favor, no responda a este correo, porque este buzón no se supervisa. Para asistencia adicional, contáctese con el desarrollador Devin Peevy en devin@bigdevdog.com.

@@ -32,6 +32,8 @@ static DOT_PNG: &str = ".png";
 // Email template filenames
 #[doc(hidden)]
 static REGISTRATION_EMAIL: &str = "registration";
+#[doc(hidden)]
+static LOCKOUT_EMAIL: &str = "lockout";
 
 // Image filenames
 #[doc(hidden)]
@@ -116,6 +118,8 @@ impl EmailLocalizationVariants {
 /// Holds all email templates used by the application, sorted by purpose first, then by language,
 /// and finally by format.
 pub struct EmailTemplates {
+    /// The lockout notification email template, sent after five or more failed login attempts.
+    pub lockout: EmailLocalizationVariants,
     /// The registration email template, sent immediately upon player account creation.
     pub registration: EmailLocalizationVariants,
 }
@@ -127,6 +131,7 @@ impl EmailTemplates {
     /// If any of the required template files cannot be found.
     fn configure() -> Self {
         Self {
+            lockout: EmailLocalizationVariants::new(LOCKOUT_EMAIL),
             registration: EmailLocalizationVariants::new(REGISTRATION_EMAIL),
         }
     }
