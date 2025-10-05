@@ -9,6 +9,8 @@ use std::{
 use lettre::message::header::ContentType;
 use once_cell::sync::Lazy;
 
+use crate::models::submodels::LanguagePreference;
+
 // Directories storing different types of assets
 #[doc(hidden)]
 static EMAIL_TEMPLATES_DIRECTORY: &str = "assets/templates";
@@ -111,6 +113,13 @@ impl EmailLocalizationVariants {
         Self {
             en: EmailFormatVariants::new(template_name, DOT_EN),
             es: EmailFormatVariants::new(template_name, DOT_ES),
+        }
+    }
+
+    pub fn language(&self, language: &LanguagePreference) -> &EmailFormatVariants {
+        match language {
+            LanguagePreference::English => &self.en,
+            LanguagePreference::Spanish => &self.es,
         }
     }
 }

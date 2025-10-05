@@ -3,41 +3,63 @@
 
 use lettre::{
     AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
-    message::{Attachment, MultiPart, SinglePart, header::ContentType},
+    message::{Attachment, Mailbox, MultiPart, SinglePart, header::ContentType},
     transport::smtp::authentication::Credentials,
 };
+use once_cell::sync::Lazy;
 use regex::Regex;
 
 use crate::{
-    config::{assets::ASSETS, environment::ENV},
+    config::{
+        assets::{ASSETS, EmailFormatVariants},
+        environment::ENV,
+    },
     errors::DBoResult,
     models::submodels::{Gender, LanguagePreference},
 };
 
-/// Replace all the value placeholders (`{{<value>}}`) within the confirmation email template with
-/// actual values, to send a meaningful and complete email to the player.
-///
-/// ### Arguments
-/// - `template`: The template to fill in (could be plaintext or HTML)
-/// - `username`: The receiving player's username
-/// - `token_id`: The identifier of the confirmation token which can confirm the player's account
-///
-/// ### Returns
-/// A string with all placeholders replaced with the necessary information
-#[doc(hidden)]
-fn fill_confirmation_template(
-    template: &str,
-    username: &str,
-    token_id: &str,
-    player_id: &str,
-) -> String {
-    template
-        .replace("{{USERNAME}}", username)
-        .replace("{{TOKEN_ID}}", token_id)
-        .replace("{{PLAYER_ID}}", player_id)
-        .replace("{{FRONTEND_URL}}", &ENV.frontend_url)
-        .replace("{{BIGDEVDOG_LOGO}}", &ASSETS.images.bigdevdog_logo.cid())
-        .replace("{{D_BO_LOGO}}", &ASSETS.images.d_bo_logo.cid())
+/// The mailer used to send all emails from the official D-Bo email address.
+static MAILER: Lazy<AsyncSmtpTransport<Tokio1Executor>> = Lazy::new(|| {
+    let credentials = Credentials::new(ENV.smtp_username.clone(), ENV.smtp_password.clone());
+    AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&ENV.smtp_host)
+        .unwrap()
+        .credentials(credentials)
+        .build()
+});
+
+/// The "from" address for messages.
+static MAILBOX: Lazy<Mailbox> = Lazy::new(|| "d-bo@bigdevdog.com".parse().unwrap());
+
+struct PlaceholderHelper {
+    placeholder: &'static str,
+    value: String,
+}
+
+impl PlaceholderHelper {
+    pub fn new(placeholder: &'static str, value: &str) -> Self {
+        Self {
+            placeholder: placeholder,
+            value: String::from(value),
+        }
+    }
+}
+
+fn replace_placeholders(
+    templates: &EmailFormatVariants,
+    helpers: &Vec<PlaceholderHelper>,
+) -> EmailFormatVariants {
+    let mut html = templates.html.clone();
+    let mut txt = templates.txt.clone();
+
+    for helper in helpers {
+        html = html.replace(helper.placeholder, &helper.value);
+        txt = txt.replace(helper.placeholder, &helper.value);
+    }
+
+    EmailFormatVariants {
+        html: html,
+        txt: txt,
+    }
 }
 
 /// Replace all the gendered placeholders (`**<m>/<f>/<nb>**`) within an email template with
@@ -63,6 +85,10 @@ fn fill_gendered_template(template: &str, gender: &Gender) -> String {
         .to_string()
 }
 
+// //////////// //
+// REGISTRATION //
+// //////////// //
+
 /// Send a registration email to the player, providing them with a link to confirm their email
 /// address and activate their account, so they may start to utilize the functionality of the
 /// application.
@@ -85,26 +111,29 @@ pub async fn send_registration_email(
     language: &LanguagePreference,
     pronoun: &Gender,
 ) -> DBoResult<()> {
-    let variants = match language {
-        LanguagePreference::English => &ASSETS.templates.registration.en,
-        LanguagePreference::Spanish => &ASSETS.templates.registration.es,
-    };
+    let helpers = vec![
+        PlaceholderHelper::new("{{USERNAME}}", username),
+        PlaceholderHelper::new("{{TOKEN_ID}}", token_id),
+        PlaceholderHelper::new("{{PLAYER_ID}}", player_id),
+        PlaceholderHelper::new("{{FRONTEND_URL}}", &ENV.frontend_url),
+        PlaceholderHelper::new("{{BIGDEVDOG_LOGO}}", &ASSETS.images.bigdevdog_logo.cid()),
+        PlaceholderHelper::new("{{D_BO_LOGO}}", &ASSETS.images.d_bo_logo.cid()),
+    ];
 
-    let mut html_message =
-        fill_confirmation_template(&variants.html, username, token_id, player_id);
-    let mut txt_message = fill_confirmation_template(&variants.txt, username, token_id, player_id);
+    let mut variants =
+        replace_placeholders(&ASSETS.templates.registration.language(language), &helpers);
 
     let subject = match language {
         LanguagePreference::Spanish => {
-            html_message = fill_gendered_template(&html_message, pronoun);
-            txt_message = fill_gendered_template(&txt_message, pronoun);
+            variants.html = fill_gendered_template(&variants.html, pronoun);
+            variants.txt = fill_gendered_template(&variants.txt, pronoun);
             "¡Confirme su dirección de correo electrónico para empezar a jugar D-Bo!"
         }
         LanguagePreference::English => "Confirm your email address to start playing D-Bo!",
     };
 
     let message = Message::builder()
-        .from("d-bo@bigdevdog.com".parse().unwrap())
+        .from(MAILBOX.clone())
         .to(player_email.parse().unwrap())
         .subject(subject)
         .multipart(
@@ -112,14 +141,14 @@ pub async fn send_registration_email(
                 .singlepart(
                     SinglePart::builder()
                         .header(ContentType::TEXT_PLAIN)
-                        .body(txt_message),
+                        .body(variants.txt),
                 )
                 .multipart(
                     MultiPart::related()
                         .singlepart(
                             SinglePart::builder()
                                 .header(ContentType::TEXT_HTML)
-                                .body(html_message),
+                                .body(variants.html),
                         )
                         .singlepart(Attachment::new_inline(ASSETS.images.d_bo_logo.cid()).body(
                             ASSETS.images.d_bo_logo.bytes(),
@@ -134,14 +163,69 @@ pub async fn send_registration_email(
                 ),
         )?;
 
-    let smtp_credentials = Credentials::new(ENV.smtp_username.clone(), ENV.smtp_password.clone());
+    MAILER.send(message).await?;
 
-    let mailer = AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&ENV.smtp_host)
-        .unwrap()
-        .credentials(smtp_credentials)
-        .build();
+    Ok(())
+}
 
-    mailer.send(message).await?;
+// /////// //
+// LOCKOUT //
+// /////// //
+
+pub async fn send_lockout_email(
+    player_email: &str,
+    username: &str,
+    failed_logins: u8,
+    end_lockout: &str,
+    language: &LanguagePreference,
+) -> DBoResult<()> {
+    let helpers = vec![
+        PlaceholderHelper::new("{{USERNAME}}", username),
+        PlaceholderHelper::new("{{FAILED_LOGINS}}", &format!("{}", failed_logins)),
+        PlaceholderHelper::new("{{END_LOCKOUT}}", end_lockout),
+        PlaceholderHelper::new("{{BIGDEVDOG_LOGO}}", &ASSETS.images.bigdevdog_logo.cid()),
+        PlaceholderHelper::new("{{D_BO_LOGO}}", &ASSETS.images.d_bo_logo.cid()),
+    ];
+
+    let variants = replace_placeholders(&ASSETS.templates.lockout.language(language), &helpers);
+
+    let subject = match language {
+        LanguagePreference::Spanish => "¡Su cuenta de D-Bo ha sido bloqueado!",
+        LanguagePreference::English => "Your D-Bo account has been blocked!",
+    };
+
+    let message = Message::builder()
+        .from(MAILBOX.clone())
+        .to(player_email.parse().unwrap())
+        .subject(subject)
+        .multipart(
+            MultiPart::alternative()
+                .singlepart(
+                    SinglePart::builder()
+                        .header(ContentType::TEXT_PLAIN)
+                        .body(variants.txt),
+                )
+                .multipart(
+                    MultiPart::related()
+                        .singlepart(
+                            SinglePart::builder()
+                                .header(ContentType::TEXT_HTML)
+                                .body(variants.html),
+                        )
+                        .singlepart(Attachment::new_inline(ASSETS.images.d_bo_logo.cid()).body(
+                            ASSETS.images.d_bo_logo.bytes(),
+                            ASSETS.images.d_bo_logo.mime_type(),
+                        ))
+                        .singlepart(
+                            Attachment::new_inline(ASSETS.images.bigdevdog_logo.cid()).body(
+                                ASSETS.images.bigdevdog_logo.bytes(),
+                                ASSETS.images.bigdevdog_logo.mime_type(),
+                            ),
+                        ),
+                ),
+        )?;
+
+    MAILER.send(message).await?;
 
     Ok(())
 }
