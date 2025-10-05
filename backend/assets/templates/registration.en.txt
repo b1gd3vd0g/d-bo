@@ -6,10 +6,14 @@ Complete your account verification by following this link:
 
 {{FRONTEND_URL}}/confirm-email/{{PLAYER_ID}}/{{TOKEN_ID}}?lang=en
 
-D-Bo is a product of BigDevDog, an independent development company. Visit our site at https://bigdevdog.com.
-
-Please do not reply to this email, as this mailbox is not monitored. For assistance, contact developer Devin Peevy at devin@bigdevdog.com.
+---
 
 Received this email by mistake? Follow the link to remove any information from our database:
 
 {{FRONTEND_URL}}/reject-email/{{PLAYER_ID}}/{{TOKEN_ID}}?lang=en
+
+---
+
+D-Bo is a product of BigDevDog, an independent development studio. Visit our site at https://bigdevdog.com.
+
+Please do not reply to this email, as this mailbox is not monitored. For assistance, contact developer Devin Peevy at devin@bigdevdog.com.
