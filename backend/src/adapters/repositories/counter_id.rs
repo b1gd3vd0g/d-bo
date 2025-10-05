@@ -11,6 +11,10 @@ pub enum CounterId {
     AccountsConfirmed,
     /// "accounts_rejected": Keeps track of accounts rejected following initial registration.
     AccountsRejected,
+    /// "logins": Keeps track of successful logins
+    Logins,
+    /// "failed_logins": Keeps track of failed login attempts
+    FailedLogins,
 }
 
 impl ToString for CounterId {
@@ -21,6 +25,8 @@ impl ToString for CounterId {
             Self::AccountsRegistered => "accounts_registered",
             Self::AccountsConfirmed => "accounts_confirmed",
             Self::AccountsRejected => "accounts_rejected",
+            Self::Logins => "logins",
+            Self::FailedLogins => "failed_logins",
         })
     }
 }
