@@ -80,8 +80,8 @@ pub struct SafePlayerResponse {
     username: String,
     /// The player's email address
     email: String,
-    /// The time at which the player account was created
-    created: DateTime<Utc>,
+    /// The time at which the player account was created, in UTC time, converted to RFC 3339
+    created: String,
     /// The player's gender
     gender: Gender,
     /// The player's preferred language
@@ -102,7 +102,7 @@ impl SafePlayerResponse {
             player_id: String::from(player.id()),
             username: String::from(player.username()),
             email: String::from(player.email()),
-            created: player.created().to_chrono(),
+            created: player.created().to_chrono().to_rfc3339(),
             gender: player.gender().clone(),
             preferred_language: player.preferred_language().clone(),
             pronoun: player.pronoun().clone(),
@@ -135,6 +135,21 @@ impl MissingDocumentResponse {
     pub fn new(collection: &str) -> Self {
         Self {
             missing: String::from(collection),
+        }
+    }
+}
+
+/// An error response indicating that the account is locked.
+#[derive(Serialize)]
+pub struct AccountLockedResponse {
+    /// The UTC DateTime indicating when the account will become unlocked again, in RFC 3339
+    locked_until: String,
+}
+
+impl AccountLockedResponse {
+    pub fn new(date: DateTime<Utc>) -> Self {
+        Self {
+            locked_until: date.to_rfc3339(),
         }
     }
 }
