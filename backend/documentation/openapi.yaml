@@ -343,7 +343,7 @@ paths:
             The player has been authenticated successfully. The response body contains an access
             token to securely authenticate the player for the next **15 minutes**, and an HTTP-only
             cookie containing refresh token information has been set for the **POST 
-            /players/refresh** endpoint.
+            /players/refresh** endpoint, valid for 30 days.
           headers:
             Set-Cookie:
               description:
@@ -372,7 +372,27 @@ paths:
                   "Failed to parse the request body as JSON: trailing comma at line 4 column 1"
         401:
           description: 
-            Authentication failed; the username/email and/or password did not match the database.
+            Authentication failed; the username/email and/or password did not match any existing
+            records in the database.
+        403:
+          description:
+            The account is currently locked! Login functionality is blocked until the time presented
+            in the response body.
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Provides the UTC time at which the account will become unlocked.
+                properties:
+                  locked_until:
+                    type: string
+                    example: 2025-10-05T17:08:47.485308239+00:00
+                required:
+                  - locked_until
+        409:
+          description:
+            The login failed because the account is not yet confirmed. The account must be confirmed
+            by following the link in the registration email before attempting to log in.
         422:
           description: The request body could not be processed; most likely because it is missing
             required fields.
@@ -396,6 +416,7 @@ components:
         type: string
       description: A UUID v4 identifying the player.
       example: 9334c148-bff1-47b2-9e56-7469b788064e
+
     TokenId:
       in: path
       name: token_id
@@ -404,9 +425,11 @@ components:
         type: string
       description: A UUID v4 identifying the confirmation token.
       example: 06d08b8c-c677-441f-9599-afd6f505c517
+
   responses:
     ServerSideError:
       description: The request could not be completed due to a server-side error.
+
   schemas:
     Gender:
       type: string
@@ -414,11 +437,13 @@ components:
         - m
         - f
         - nb
+
     Language:
       type: string
       enum:
         - en
         - es
+
     PlayerInfo:
       type: object
       properties:
@@ -459,6 +484,7 @@ components:
           wins: 0
           losses: 0
           dropouts: 0
+
     PlayerStats:
       type: object
       properties:
