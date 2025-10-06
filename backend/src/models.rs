@@ -89,6 +89,8 @@ pub struct Player {
     failed_logins: u8,
     /// The date when a player can attempt to log in again.
     locked_until: Option<DateTime>,
+    /// Any access JWTs or Refresh Tokens created *before* this date will be considered invalid.
+    session_valid_after: DateTime,
 }
 
 impl Player {
@@ -133,6 +135,7 @@ impl Player {
             last_login: now,
             failed_logins: 0,
             locked_until: None,
+            session_valid_after: now,
         })
     }
 
