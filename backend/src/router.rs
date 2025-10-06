@@ -7,7 +7,7 @@ use crate::{
     adapters::repositories::Repositories,
     handlers::player_handlers::{
         handle_player_account_confirmation, handle_player_account_rejection, handle_player_login,
-        handle_player_registration, handle_resend_registration_email,
+        handle_player_refresh, handle_player_registration, handle_resend_registration_email,
     },
 };
 
@@ -31,5 +31,6 @@ pub fn router() -> Router<Repositories> {
                 .put(handle_resend_registration_email),
         )
         .route("/players/login", post(handle_player_login))
+        .route("/players/refresh", post(handle_player_refresh))
         .layer(cors())
 }

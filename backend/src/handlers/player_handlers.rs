@@ -6,7 +6,10 @@ use axum::{
     http::{HeaderMap, StatusCode, header::SET_COOKIE},
     response::{IntoResponse, Response},
 };
-use axum_extra::extract::cookie::{Cookie, SameSite};
+use axum_extra::extract::{
+    CookieJar,
+    cookie::{Cookie, SameSite},
+};
 
 use crate::{
     adapters::repositories::Repositories,
@@ -27,6 +30,21 @@ fn unexpected_error(error: DBoError, request_name: &str) -> Response {
     eprintln!("This should not happen!");
     eprintln!("{:?}", error);
     (StatusCode::INTERNAL_SERVER_ERROR).into_response()
+}
+
+fn build_refresh_token_header(id: &str, secret: &str) -> HeaderMap {
+    let cookie_value = format!("{}:{}", id, secret);
+    let cookie = Cookie::build(("refresh_token", cookie_value))
+        .http_only(true)
+        .secure(ENV.secure())
+        .same_site(SameSite::Strict)
+        .path("/players/refresh")
+        .build();
+
+    let mut headers = HeaderMap::new();
+    headers.insert(SET_COOKIE, cookie.to_string().parse().unwrap());
+
+    headers
 }
 
 /// Handle a request to create a new player account.
@@ -149,16 +167,9 @@ pub async fn handle_player_login(
 
     match outcome {
         Ok(info) => {
-            let cookie_value = format!("{}:{}", info.refresh_token_id, info.refresh_token_secret);
-            let cookie = Cookie::build(("refresh_token", cookie_value))
-                .http_only(true)
-                .secure(ENV.secure())
-                .same_site(SameSite::Strict)
-                .path("/players/refresh")
-                .build();
+            let headers =
+                build_refresh_token_header(&info.refresh_token_id, &info.refresh_token_secret);
 
-            let mut headers = HeaderMap::new();
-            headers.insert(SET_COOKIE, cookie.to_string().parse().unwrap());
             (
                 StatusCode::OK,
                 headers,
@@ -206,6 +217,43 @@ pub async fn handle_resend_registration_email(
             DBoError::RelationalConflict => (StatusCode::FORBIDDEN).into_response(),
             DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
             _ => unexpected_error(e, "resend registration email"),
+        },
+    }
+}
+
+pub async fn handle_player_refresh(
+    State(repos): State<Repositories>,
+    cookies: CookieJar,
+) -> Response {
+    let token_info = match cookies.get("refresh_token") {
+        Some(cookie) => cookie.value(),
+        None => return (StatusCode::UNAUTHORIZED).into_response(),
+    };
+
+    let output =
+        PlayerService::refresh_authn_tokens(repos.players(), repos.refresh_tokens(), token_info)
+            .await;
+
+    match output {
+        Ok(info) => {
+            let headers =
+                build_refresh_token_header(&info.refresh_token_id, &info.refresh_token_secret);
+
+            (
+                StatusCode::OK,
+                headers,
+                Json(AccessTokenResponse::new(&info.access_token)),
+            )
+                .into_response()
+        }
+        Err(e) => match e {
+            DBoError::InvalidToken
+            | DBoError::AuthenticationFailure
+            | DBoError::MissingDocument(_) => (StatusCode::UNAUTHORIZED).into_response(),
+            DBoError::TokenExpired => (StatusCode::GONE).into_response(),
+            DBoError::InternalConflict => (StatusCode::FORBIDDEN).into_response(),
+            DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
+            _ => unexpected_error(e, "player authentication refresh"),
         },
     }
 }

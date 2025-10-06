@@ -51,6 +51,9 @@ impl<T> Model for T where T: Collectible + Identifiable + Serialize + for<'de> D
 // DATABASE MODELS //
 // /////////////// //
 
+// PLAYER
+// //////
+
 /// A document representing a player's account information, stored in the `players` collection.
 #[derive(Clone, Deserialize, Serialize)]
 pub struct Player {
@@ -95,6 +98,9 @@ impl Player {
     /// - `username`: The username of the new player
     /// - `password`: The raw text password of the new player
     /// - `email`: The email address of the new player
+    /// - `gender`: The player's preferred gender
+    /// - `preferred_language`: The player's preferred language
+    /// - `pronoun`: The player's preferred pronouns
     ///
     /// ### Errors
     /// - `InvalidPlayerInput` if the input does not pass validation
@@ -199,6 +205,9 @@ impl Identifiable for Player {
     }
 }
 
+// CONFIRMATION TOKEN
+// //////////////////
+
 /// A document representing an email confirmation token, stored in the `confirmation-tokens`
 /// collection.
 #[derive(Clone, Serialize, Deserialize)]
@@ -248,6 +257,9 @@ impl Identifiable for ConfirmationToken {
     }
 }
 
+// COUNTER
+// ///////
+
 /// A document representing a counter, stored in the `counters` collection.
 #[derive(Clone, Deserialize, Serialize)]
 pub struct Counter {
@@ -278,6 +290,9 @@ impl Identifiable for Counter {
         "id"
     }
 }
+
+// REFRESH TOKEN
+// /////////////
 
 /// A document representing a refresh token, which can validate a player whose access token has
 /// expired for up to 7 days.
@@ -316,6 +331,18 @@ impl RefreshToken {
 
     pub fn player_id(&self) -> &str {
         &self.player_id
+    }
+
+    pub fn secret(&self) -> &str {
+        &self.secret
+    }
+
+    pub fn revoked(&self) -> bool {
+        self.revoked
+    }
+
+    pub fn expired(&self) -> bool {
+        Utc::now() - self.created.to_chrono() > Duration::seconds(60 * 60 * 24 * 30)
     }
 }
 

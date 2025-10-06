@@ -3,8 +3,8 @@ use mongodb::bson::doc;
 
 use crate::{
     adapters::repositories::Repository,
-    errors::DBoResult,
-    models::{Identifiable, RefreshToken},
+    errors::{DBoError, DBoResult},
+    models::{Collectible, Identifiable, RefreshToken},
 };
 
 impl Repository<RefreshToken> {
@@ -32,6 +32,30 @@ impl Repository<RefreshToken> {
         }
 
         Ok(())
+    }
+
+    /// Replace an existing refresh token with a new one.
+    ///
+    /// ### Arguments
+    /// - `old_token_id`: The old token's unique identifier
+    /// - `new_token`: The new token to insert
+    ///
+    /// ### Returns
+    /// - `MissingDocument` if the old token could not be found
+    /// - `AdapterError` if the query should fail
+    pub async fn replace(&self, old_token_id: &str, new_token: &RefreshToken) -> DBoResult<()> {
+        let option = self
+            .collection
+            .find_one_and_replace(doc! { "token_id": old_token_id}, new_token)
+            .await?;
+
+        if option.is_some() {
+            Ok(())
+        } else {
+            Err(DBoError::MissingDocument(String::from(
+                RefreshToken::collection_name(),
+            )))
+        }
     }
 
     /// Find all refresh tokens associated with a player account.

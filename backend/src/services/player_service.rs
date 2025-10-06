@@ -1,5 +1,7 @@
 //! This module handles all services related to **player accounts**.
 
+use regex::Regex;
+
 use crate::{
     adapters::{
         email::{send_lockout_email, send_registration_email},
@@ -366,5 +368,75 @@ impl PlayerService {
         .await?;
 
         Ok(())
+    }
+
+    /// Refresh a players authentication tokens. Parse the cookie to find the ID and secret; find
+    /// the refresh token in the database matching the id; verify that the secrets match; confirm
+    /// that the token is unexpired; find the associated player account; make a new access token;
+    /// replace the old refresh token in the database with a new one.
+    ///
+    /// ### Arguments
+    /// - `players`: The Player repository
+    /// - `tokens`: The RefreshToken repository
+    /// - `cookie_value`: The value of the refresh_token cookie (should be like `"{id}:{secret}"`)
+    ///
+    /// ### Errors
+    /// - `InvalidToken` if the cookie value cannot be parsed into an id and a secret
+    /// - `AuthenticationFailure` if the token cannot be found, or if the secret does not match
+    /// - `TokenExpired` if the token is found but is older than 30 days
+    /// - `InternalConflict` if the token has been revoked
+    /// - `MissingDocument` if the associated player account cannot be found, or if midway through,
+    ///   the old token cannot be found in order to replace it
+    /// - `AdapterError` if any database query should fail, or if the secret could not be verified,
+    ///   or if the new token cannot be created, or if the new secret could not be hashed.
+    pub async fn refresh_authn_tokens(
+        players: &Repository<Player>,
+        tokens: &Repository<RefreshToken>,
+        cookie_value: &str,
+    ) -> DBoResult<LoginTokenInfo> {
+        let regex = Regex::new(r"([^:]+):([^:]+)").unwrap();
+
+        let (token_id, secret) = match regex.captures(cookie_value) {
+            Some(caps) => (caps[1].to_string(), caps[2].to_string()),
+            None => return Err(DBoError::InvalidToken),
+        };
+
+        let token = match tokens.find_by_id(&token_id).await? {
+            Some(t) => t,
+            None => return Err(DBoError::AuthenticationFailure),
+        };
+
+        if token.expired() {
+            return Err(DBoError::TokenExpired);
+        }
+
+        if token.revoked() {
+            return Err(DBoError::InternalConflict);
+        }
+
+        if !verify_secret(&secret, token.secret())? {
+            return Err(DBoError::AuthenticationFailure);
+        }
+
+        let player = match players.find_by_id(token.player_id()).await? {
+            Some(p) => p,
+            None => {
+                return Err(DBoError::MissingDocument(String::from(
+                    Player::collection_name(),
+                )));
+            }
+        };
+
+        let access_token = generate_access_token(player.id())?;
+        let new_secret = generate_secret();
+        let new_refresh_token = RefreshToken::new(player.id(), &new_secret)?;
+
+        tokens.replace(token.id(), &new_refresh_token).await?;
+
+        Ok(LoginTokenInfo::new(
+            &access_token,
+            new_refresh_token.id(),
+            &new_secret,
+        ))
     }
 }
