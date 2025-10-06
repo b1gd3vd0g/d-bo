@@ -51,3 +51,8 @@ pub struct PlayerLoginRequestBody {
     pub username_or_email: String,
     pub password: String,
 }
+
+#[derive(Deserialize)]
+pub struct PasswordRequestBody {
+    pub password: String,
+}

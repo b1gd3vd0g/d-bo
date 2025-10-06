@@ -16,7 +16,9 @@ use crate::{
     config::environment::ENV,
     errors::DBoError,
     handlers::{
-        request_bodies::{PlayerLoginRequestBody, PlayerRegistrationRequestBody},
+        request_bodies::{
+            PasswordRequestBody, PlayerLoginRequestBody, PlayerRegistrationRequestBody,
+        },
         responses::{
             AccessTokenResponse, AccountLockedResponse, ExistingFieldViolationResponse,
             MissingDocumentResponse,
@@ -24,6 +26,10 @@ use crate::{
     },
     services::player_service::PlayerService,
 };
+
+// //////////////// //
+// HELPER FUNCTIONS //
+// //////////////// //
 
 fn unexpected_error(error: DBoError, request_name: &str) -> Response {
     eprintln!("An unexpected DBoError occurred during {}!", request_name);
@@ -46,6 +52,29 @@ fn build_refresh_token_header(id: &str, secret: &str) -> HeaderMap {
 
     headers
 }
+
+fn extract_access_token(headers: HeaderMap) -> Option<String> {
+    let header = match headers.get("Authorization") {
+        Some(h) => h.to_str(),
+        None => return None,
+    };
+
+    let value = match header {
+        Ok(v) => v.to_string(),
+        Err(_) => return None,
+    };
+
+    let token = value.strip_prefix("Bearer ");
+
+    match token {
+        Some(t) => Some(t.to_string()),
+        None => None,
+    }
+}
+
+// //////// //
+// HANDLERS //
+// //////// //
 
 /// Handle a request to create a new player account.
 ///
@@ -254,6 +283,32 @@ pub async fn handle_player_refresh(
             DBoError::InternalConflict => (StatusCode::FORBIDDEN).into_response(),
             DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
             _ => unexpected_error(e, "player authentication refresh"),
+        },
+    }
+}
+
+pub async fn handle_player_deletion(
+    State(repos): State<Repositories>,
+    headers: HeaderMap,
+    Json(body): Json<PasswordRequestBody>,
+) -> Response {
+    let token = match extract_access_token(headers) {
+        Some(t) => t,
+        None => return (StatusCode::BAD_REQUEST).into_response(),
+    };
+
+    let outcome = PlayerService::delete_player_account(
+        repos.players(),
+        repos.counters(),
+        &token,
+        &body.password,
+    )
+    .await;
+
+    match outcome {
+        Ok(()) => (StatusCode::NO_CONTENT).into_response(),
+        Err(e) => match e {
+            _ => unexpected_error(e, "player deletion"),
         },
     }
 }

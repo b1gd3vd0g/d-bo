@@ -6,7 +6,7 @@ use crate::{
     adapters::{
         email::{send_lockout_email, send_registration_email},
         hashing::{generate_secret, verify_secret},
-        jwt::generate_access_token,
+        jwt::{decode_access_token, generate_access_token},
         repositories::{Repository, counter_id::CounterId},
     },
     errors::{DBoError, DBoResult},
@@ -438,5 +438,50 @@ impl PlayerService {
             new_refresh_token.id(),
             &new_secret,
         ))
+    }
+
+    /// Delete a player's account. This requires that they have a valid access token to identify
+    /// them, and they must also provide their password to further verify their identity. Find the
+    /// player by the token, delete the document if the password matches, and increment the counter.
+    ///
+    /// ### Arguments
+    /// - `players`: The Player Repository
+    /// - `counters`: The Counter Repository
+    /// - `token`: The player's access token JWT
+    /// - `password`: The player's password
+    ///
+    /// ### Errors
+    /// - `TokenExpired` if the access token is expired.
+    /// - `InvalidToken` if the token cannot be decoded because it is bad.
+    /// - `MissingDocument` if the player cannot be identified by the token.
+    /// - `AdapterError` if a database query fails, or if the token cannot be decoded due to a
+    ///   server-side error.
+    pub async fn delete_player_account(
+        players: &Repository<Player>,
+        counters: &Repository<Counter>,
+        token: &str,
+        password: &str,
+    ) -> DBoResult<()> {
+        let payload = decode_access_token(token)?;
+
+        let player = match players.find_by_id(payload.sub()).await? {
+            Some(p) => p,
+            None => {
+                return Err(DBoError::MissingDocument(String::from(
+                    Player::collection_name(),
+                )));
+            }
+        };
+
+        if !verify_secret(password, player.password())? {
+            return Err(DBoError::AuthenticationFailure);
+        }
+
+        players.delete(player.id()).await?;
+        counters
+            .increment_counter(CounterId::AccountsDeleted)
+            .await?;
+
+        Ok(())
     }
 }

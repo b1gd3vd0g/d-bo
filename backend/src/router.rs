@@ -6,8 +6,9 @@ use tower_http::cors::{Any, CorsLayer};
 use crate::{
     adapters::repositories::Repositories,
     handlers::player_handlers::{
-        handle_player_account_confirmation, handle_player_account_rejection, handle_player_login,
-        handle_player_refresh, handle_player_registration, handle_resend_registration_email,
+        handle_player_account_confirmation, handle_player_account_rejection,
+        handle_player_deletion, handle_player_login, handle_player_refresh,
+        handle_player_registration, handle_resend_registration_email,
     },
 };
 
@@ -23,7 +24,10 @@ fn cors() -> CorsLayer {
 /// Return the HTTP router which will handle all incoming requests.
 pub fn router() -> Router<Repositories> {
     Router::new()
-        .route("/players", post(handle_player_registration))
+        .route(
+            "/players",
+            post(handle_player_registration).delete(handle_player_deletion),
+        )
         .route(
             "/players/{player_id}/confirm/{token_id}",
             post(handle_player_account_confirmation)
