@@ -301,4 +301,70 @@ impl PlayerService {
             &refresh_secret,
         ))
     }
+
+    /// Resend a new registration email to the player. This happens most likely when a player tries
+    /// to confirm their new account, but finds their original confirmation token to be expired.
+    ///
+    /// Search for the player by id, and make sure that it is not already confirmed. Find the old
+    /// confirmation token in the database, generate a new one, and replace it. Finally, resend the
+    /// email to the player.
+    ///
+    /// ### Arguments
+    /// - `players`: The Player repository
+    /// - `tokens`: The ConfirmationToken repository
+    /// - `player_id`: The player's unique identifier
+    /// - `token_id`: The old confirmation token's unique identifier
+    ///
+    /// ### Errors
+    /// - `MissingDocument` if either the player or token cannot be found
+    /// - `InternalConflict` if the player account is already confirmed
+    /// - `RelationalConflict` if the token is not associated with the same player
+    /// - `AdapterError` if a database query should fail, or if the email could not be sent
+    pub async fn resend_registration_email(
+        players: &Repository<Player>,
+        tokens: &Repository<ConfirmationToken>,
+        player_id: &str,
+        token_id: &str,
+    ) -> DBoResult<()> {
+        let player = match players.find_by_id(player_id).await? {
+            Some(p) => p,
+            None => {
+                return Err(DBoError::MissingDocument(String::from(
+                    Player::collection_name(),
+                )));
+            }
+        };
+
+        if player.confirmed() {
+            return Err(DBoError::InternalConflict);
+        }
+
+        let old_token = match tokens.find_by_id(token_id).await? {
+            Some(t) => t,
+            None => {
+                return Err(DBoError::MissingDocument(String::from(
+                    ConfirmationToken::collection_name(),
+                )));
+            }
+        };
+
+        if old_token.player_id() != player.id() {
+            return Err(DBoError::RelationalConflict);
+        }
+
+        let new_token = ConfirmationToken::new(player.id());
+        tokens.insert(&new_token).await?;
+
+        send_registration_email(
+            player.email(),
+            player.username(),
+            new_token.id(),
+            player.id(),
+            player.preferred_language(),
+            player.pronoun(),
+        )
+        .await?;
+
+        Ok(())
+    }
 }

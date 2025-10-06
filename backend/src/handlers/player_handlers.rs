@@ -181,3 +181,31 @@ pub async fn handle_player_login(
         },
     }
 }
+
+pub async fn handle_resend_registration_email(
+    State(repos): State<Repositories>,
+    Path((player_id, token_id)): Path<(String, String)>,
+) -> Response {
+    let outcome = PlayerService::resend_registration_email(
+        repos.players(),
+        repos.confirmation_tokens(),
+        &player_id,
+        &token_id,
+    )
+    .await;
+
+    match outcome {
+        Ok(()) => (StatusCode::NO_CONTENT).into_response(),
+        Err(e) => match e {
+            DBoError::MissingDocument(collection) => (
+                StatusCode::NOT_FOUND,
+                Json(MissingDocumentResponse::new(&collection)),
+            )
+                .into_response(),
+            DBoError::InternalConflict => (StatusCode::CONFLICT).into_response(),
+            DBoError::RelationalConflict => (StatusCode::FORBIDDEN).into_response(),
+            DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
+            _ => unexpected_error(e, "resend registration email"),
+        },
+    }
+}
