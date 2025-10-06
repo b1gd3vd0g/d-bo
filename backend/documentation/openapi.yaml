@@ -297,6 +297,43 @@ paths:
           description: The account could not be deleted because the token does not match the player.
         500:
           $ref: '#/components/responses/ServerSideError'
+  
+    put:
+      tags:
+        - Player Accounts
+      summary: Resend the registration email with a fresh token
+      description: |
+        This endpoint is usually used after a player attempts to confirm their account, but finds
+        their token to be expired after 15 minutes. The request verifies that both the player and
+        the old token still exist and match each other. Then it will generate a new refresh token to 
+        replace the old one in the database, and sends a new registration email containing a link 
+        with the new token ID. This token will be good for another 15 minutes after completing this
+        request.
+      parameters:
+        - $ref: '#/components/parameters/PlayerId'
+        - $ref: '#/components/parameters/TokenId'
+      responses:
+        204:
+          description: The request was completed and the email was sent successfully.
+        403:
+          description: The request failed because the player account is already confirmed.
+        404:
+          description: Either the player or the token could not be found
+          content:
+            application/json:
+              schema:
+                description: Tells the client from which collection the document is missing.
+                type: object
+                properties:
+                  missing:
+                    type: string
+                    enum:
+                      - players
+                      - confirmation-tokens
+        409:
+          description: The request failed because the token does not match the player.
+        500:
+          $ref: '#/components/responses/ServerSideError'
 
   /players/login:
     post:
@@ -403,6 +440,62 @@ paths:
                 example: 
                   "Failed to deserialize the JSON body into the target type: missing field 
                   `username_or_email` at line 4 column 1"
+        500:
+          $ref: '#/components/responses/ServerSideError'
+
+  /players/refresh:
+    post:
+      tags:
+        - Player Accounts
+      summary: Refresh the player's authentication tokens
+      description: |
+        This endpoint is used to generate a fresh access token for the player to use to
+        authenticate themselves for 15 minutes, and replaces their old refresh token with a fresh
+        one in the database.
+
+        This request requires that an HTTP-only cookie be set for this path, containing the refresh
+        token id and secret. The cookie will be extracted, and then its credentials will be verified
+        against the existing refresh token. The refresh token will not work if it is more than 30 
+        days old, or if it has been marked as "revoked". It will then find the associated player
+        account in order to generate new authentication tokens for the player.
+      parameters:
+        - in: cookie
+          name: refresh_token
+          required: true
+          description: The refresh token header
+          schema:
+            type: string
+            example: 1f1cbaac-34d6-41d7-ba73-5137831a27fb:aGw_YnVbBT8WOkYRyWA1AqhYa0Hvmz7Jwe4tIMppPnc
+      responses:
+        200:
+          description: The request was successful. A new cookie has been set, good for 30 days, and
+            the body contains the new access token to authenticate the player for 15 minutes.
+          headers:
+            Set-Cookie:
+              description:
+                An HTTP-only cookie which can be used to refresh an expired access token.
+              schema:
+                type: string
+                example: 
+                  refresh_token=6727bdde-ecf7-4f2c-9f82-fa1fdcb61ed1:JroD-BB9RLXWqB7A-7BNQT6kcNkz-xzLMSY9NonP4_Y; 
+                  HttpOnly; SameSite=Strict; Path=/players/refresh
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    example: 
+                      eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhMjljMDZhZS05MWM4LTQ4NDktYmM3MS05NmIwYmNlOTAzMDgiLCJleHAiOjE3NTczNzU0MjAsImlhdCI6MTc1NzM3NDUyMH0.2lQnOVkusYC0nfue8FbTQjFxM9fXojdTGEvG8djAAx4
+        401:
+          description: The request failed because the cookie was not set, was formatted incorrectly, 
+            did not match the records in the database, or was not associated with an existing player
+            account.
+        403:
+          description: The request failed because the token had been revoked.
+        410:
+          description: The request failed because the token was expired after more than 30 days.
         500:
           $ref: '#/components/responses/ServerSideError'
 
