@@ -24,7 +24,8 @@ tags:
   - name: Player Accounts
     description:
       These routes have to do with the creation, reading, updating, and deletion of player accounts.
-
+  - name: Authentication
+    description: These endpoints have to do with authenticating players.
 paths:
   /players:
     post:
@@ -338,7 +339,7 @@ paths:
   /players/login:
     post:
       tags:
-        - Player Accounts
+        - Authentication
       summary: Attempt to log in via username/email and password.
       description: |
         This endpoint is called whenever a user attempts to log in with their username and password.
@@ -446,7 +447,7 @@ paths:
   /players/refresh:
     post:
       tags:
-        - Player Accounts
+        - Authentication
       summary: Refresh the player's authentication tokens
       description: |
         This endpoint is used to generate a fresh access token for the player to use to
