@@ -198,6 +198,10 @@ impl Player {
     pub fn last_passwords(&self) -> &[String; 4] {
         &self.last_passwords
     }
+
+    pub fn proposed_email(&self) -> &Option<String> {
+        &self.proposed_email
+    }
 }
 
 impl Collectible for Player {
