@@ -1,0 +1,19 @@
+Hola, {{NEW_USERNAME}}.
+
+Este correo se le envía para informarle que su nombre de usuario de D-Bo ha cambiado de {{OLD_USERNAME}} a {{NEW_USERNAME}}.
+
+Su antiguo nombre de usuario ({{OLD_USERNAME}}) ya no se puede usar para ingresar a tu cuenta - tendrá que usar la nueva o su dirección de correo electrónico.
+
+El nombre de usuario {{OLD_USERNAME}} volvió a estar disponible, y cualquier otra cuenta ya puede reclamarselo.
+
+Debido a que sus credenciales de acceso han sido modificadas, todas sus sesiones actuales se han terminado. Si estaba conectad**o/a/e** en algún otro dispositivo, tendrá que ingresar de nuevo.
+
+---
+
+Si usted no realizó esta acción, por favor ingrese a tu cuenta tan pronto como le sea posible y cambie su contraseña.
+
+---
+
+D-Bo es un producto de BigDevDog, un estudio de desarrollo independiente. Visítenos en https://bigdevdog.com.
+
+Por favor, no responda a este correo, porque este buzón no se supervisa. Para asistencia adicional, contáctese con el desarrollador Devin Peevy en devin@bigdevdog.com.

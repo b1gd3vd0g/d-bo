@@ -1,0 +1,19 @@
+Hello, {{NEW_USERNAME}}.
+
+This email is being sent to inform you that your username on D-Bo has been changed from {{OLD_USERNAME}} to {{NEW_USERNAME}}.
+
+Your old username ({{OLD_USERNAME}}) will no longer be valid to log in with - you must use your new username ({{NEW_USERNAME}}) or your email address.
+
+The username {{OLD_USERNAME}} is now up for grabs, and any account may now claim it for themselves.
+
+Due to your login credentials having been updated, all current sessions have been terminated. Any device which was previously signed in to your account will now require you to log in again.
+
+---
+
+If this was not you, please sign in to your account as soon as possible and change your password.
+
+---
+
+D-Bo is a product of BigDevDog, an independent development studio. Visit our site at https://bigdevdog.com.
+
+Please do not reply to this email, as this mailbox is not monitored. For assistance, contact developer Devin Peevy at devin@bigdevdog.com.
