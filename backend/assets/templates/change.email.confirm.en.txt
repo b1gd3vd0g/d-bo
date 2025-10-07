@@ -1,0 +1,25 @@
+Hello, {{USERNAME}}.
+
+This email is being sent because you have requested to change your email address on D-Bo from {{OLD_EMAIL}} to {{NEW_EMAIL}}.
+
+To confirm this change and start receiving all correspondence in this mailbox, follow this link:
+
+{{FRONTEND_URL}}/confirm-email-change/{{PLAYER_ID}}/{{TOKEN_ID}}?lang=en
+
+**Note**: This link is only valid for 15 minutes, and while the operation is still in progress. After 15 minutes, you must log in to your account and request a new confirmation email.
+
+**Note**: After completing this action, all existing sessions will be terminated. If you were connected on any other devices, you will have to log in again.
+
+---
+
+If this was not you, follow this link to undo the pending change:
+
+{{FRONTEND_URL}}/reject-email-change/{{PLAYER_ID}}/{{TOKEN_ID}}?lang=en
+
+**Note**: This link is only valid for 24 hours, and while the operation is still in progress. After 24 hours, the operation must be cancelled by logging in to the account.
+
+---
+
+D-Bo is a product of BigDevDog, an independent development studio. Visit our site at https://bigdevdog.com.
+
+Please do not reply to this email, as this mailbox is not monitored. For assistance, contact developer Devin Peevy at devin@bigdevdog.com.

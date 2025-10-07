@@ -1,0 +1,92 @@
+<html>
+
+<body style="
+      font-family: Verdana, Geneva, Tahoma, sans-serif;
+      margin: 0;
+      padding: 0;
+    ">
+    <header>
+        <h2 style="text-align: center;">Hello, {{USERNAME}}.</h2>
+        <img src="cid:{{D_BO_LOGO}}" style="
+            width: 50%;
+            margin: auto;
+            display: block;
+            max-width: 300px;
+        " />
+    </header>
+    <main style="padding: 2em;">
+        <p>
+            This email is being sent because you have requested to change your email address on D-Bo from {{OLD_EMAIL}}
+            to {{NEW_EMAIL}}.
+        </p>
+        <p>
+            To confirm this change and start receiving all correspondence in this mailbox, click the following button:
+        </p>
+        <a href="{{FRONTEND_URL}}/confirm-email-change/{{PLAYER_ID}}/{{TOKEN_ID}}?lang=en" target="_blank"
+            rel="noreferrer" style="text-decoration: none;">
+            <div style="
+                background: lightblue;
+                padding: 1em 2em;
+                width: fit-content;
+                font-weight: bold;
+                border-radius: 1em;
+                margin: auto;
+                text-align: center;
+            ">
+                Confirme this mailbox
+            </div>
+        </a>
+        <p>
+            <b>Note</b>: This link is only valid for 15 minutes, and while the operation is still in progress. After
+            15 minutes, you must log in to your account and request a new confirmation email.
+        </p>
+        <p>
+            <b>Note</b>: After completing this action, all existing sessions will be terminated. If you were
+            connected on any other devices, you will have to log in again.
+        </p>
+        <hr style="margin: 2em 0;" />
+        <p>
+            If this was not you, follow this link to undo the pending change:
+        </p>
+        <a href="{{FRONTEND_URL}}/reject-email-change/{{PLAYER_ID}}/{{TOKEN_ID}}?lang=en" target="_blank"
+            rel="noreferrer" style="text-decoration: none;">
+            <div style="
+                background: lightblue;
+                padding: 1em 2em;
+                width: fit-content;
+                font-weight: bold;
+                border-radius: 1em;
+                margin: auto;
+                text-align: center;
+            ">
+                Cancel the change of email address
+            </div>
+        </a>
+        <p><b>Note</b>: This link is only valid for 24 hours, and while the operation is still in progress. After 24
+            hours, the operation must be cancelled by logging in to the account.
+        </p>
+        <div style="margin: 2em auto;">
+            <img src="cid:{{BIGDEVDOG_LOGO}}" style="
+            margin: 1em auto;
+            width: 85%;
+            max-width: 500px;
+            display: block;
+        " />
+            <small style="text-align: center; display: block;">
+                D-Bo is a product of
+                <a href="https://bigdevdog.com" target="_blank" rel="noreferrer">BigDevDog</a>, an independent
+                development studio.
+            </small>
+        </div>
+    </main>
+    <hr style="margin: 2em 0;" />
+    <footer style="padding: 1em 2em;">
+        <small>
+            Please do not reply to this email, as this mailbox is not monitored. For assistance, contact developer Devin
+            Peevy at
+            <a href="mailto:devin@bigdevdog.com">devin@bigdevdog.com</a>.
+        </small>
+    </footer>
+</body>
+
+</html>

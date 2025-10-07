@@ -1,0 +1,25 @@
+Hola, {{USERNAME}}.
+
+Este correo se le envía porque usted ha solicitado un cambio de dirección de correo electrónico en D-Bo, de {{OLD_EMAIL}} a {{NEW_EMAIL}}.
+
+Para confirmar este cambio y empezar a recibir toda correspondencia en este buzón, siga este enlace:
+
+{{FRONTEND_URL}}/confirm-email-change/{{PLAYER_ID}}/{{CONF_TOKEN_ID}}?lang=es
+
+**Aviso**: Este enlace solo está valido para 15 minutos, y mientras la operación siga en proceso. Después de 15 minutos, tendrá que acceder su cuenta de nuevo y solicitar otro correo de confirmación.
+
+**Aviso**: Después de realizar esta acción, todas sus sesiónes actuales se terminarán. Si estaba conectad**o/a/e** en algún otro dispositivo, tendrá que ingresar de nuevo.
+
+---
+
+Si usted no realizó esta acción, siga este enlace para deshacer el cambio pendiente:
+
+{{FRONTEND_URL}}/reject-email-change/{{PLAYER_ID}}/{{UNDO_TOKEN_ID}}?lang=es
+
+**Aviso**: Este enlace solo está valido para 24 horas, y mientras la operación siga en proceso. Después de 24 horas, la operación solo se puede cancelar accediendo a la cuenta.
+
+---
+
+D-Bo es un producto de BigDevDog, un estudio de desarrollo independiente. Visítenos en https://bigdevdog.com.
+
+Por favor, no responda a este correo, porque este buzón no se supervisa. Para asistencia adicional, contáctese con el desarrollador Devin Peevy en devin@bigdevdog.com.
