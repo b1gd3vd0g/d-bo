@@ -1,0 +1,21 @@
+Hola, {{USERNAME}}.
+
+Este correo se le envía para informarle que su dirección de correo electrónico en D-Bo está en el proceso de cambiar de {{OLD_EMAIL}} a {{NEW_EMAIL}}.
+
+Si usted realizó esta acción, revise el buzón de {{NEW_EMAIL}} para encontrar un correo dejando que confirme su nueva dirección. Hasta entonces, este buzón seguirá recibiendo toda correspondencia de D-Bo.
+
+---
+
+Si usted no realizó esta acción, por favor ingresa en su cuenta tan pronto como le sea posible, cambie su contraseña, y cancele el cambio pendiente.
+
+También pueda cancelar la operación siguiendo este enlace:
+
+{{FRONTEND_URL}}/cancel-email-change/{{PLAYER_ID}}/{{UNDO_TOKEN_ID}}?lang=es
+
+**Aviso**: Este enlace solo está valido para 24 horas, o hasta que se confirme la nueva dirección. Actúe rapidamente para mantener su cuenta segura.
+
+---
+
+D-Bo es un producto de BigDevDog, un estudio de desarrollo independiente. Visítenos en https://bigdevdog.com.
+
+Por favor, no responda a este correo, porque este buzón no se supervisa. Para asistencia adicional, contáctese con el desarrollador Devin Peevy en devin@bigdevdog.com.

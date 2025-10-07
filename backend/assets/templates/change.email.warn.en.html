@@ -1,0 +1,75 @@
+<html>
+
+<body style="
+      font-family: Verdana, Geneva, Tahoma, sans-serif;
+      margin: 0;
+      padding: 0;
+    ">
+    <header>
+        <h2 style="text-align: center;">Hello, {{USERNAME}}.</h2>
+        <img src="cid:{{D_BO_LOGO}}" style="
+            width: 50%;
+            margin: auto;
+            display: block;
+            max-width: 300px;
+        " />
+    </header>
+    <main style="padding: 2em;">
+        <p>
+            This email is being sent to inform you that your email address on D-Bo is in the process of changing from
+            {{OLD_EMAIL}} to {{NEW_EMAIL}}.
+        </p>
+        <p>
+            If this was you, check the mailbox of {{NEW_EMAIL}} to find an email asking you to confirm your new email
+            address. Until then, this mailbox will still receive any correspondence from D-Bo.
+        </p>
+        <hr style="margin: 2em 0;" />
+        <p>
+            If this was not you, please sign into your account as soon as possible, change your password, and cancel the
+            pending change.
+        </p>
+        <p>
+            You can also cancel the operation by clicking this button:
+        </p>
+        <a href="{{FRONTEND_URL}}/cancel-email-change/{{PLAYER_ID}}/{{UNDO_TOKEN_ID}}?lang=en" target="_blank"
+            rel="noreferrer" style="text-decoration: none;">
+            <div style="
+                background: lightblue;
+                padding: 1em 2em;
+                width: fit-content;
+                font-weight: bold;
+                border-radius: 1em;
+                margin: auto;
+                text-align: center;
+            ">
+                Cancel the change of email address
+            </div>
+        </a>
+        <p><b>Note</b>: This link is only good for 24 hours, or until the new email address is confirmed. Act quickly in
+            order to keep your account secure.
+        </p>
+        <div style="margin: 2em auto;">
+            <img src="cid:{{BIGDEVDOG_LOGO}}" style="
+            margin: 1em auto;
+            width: 85%;
+            max-width: 500px;
+            display: block;
+        " />
+            <small style="text-align: center; display: block;">
+                D-Bo is a product of
+                <a href="https://bigdevdog.com" target="_blank" rel="noreferrer">BigDevDog</a>, an independent
+                development studio.
+            </small>
+        </div>
+    </main>
+    <hr style="margin: 2em 0;" />
+    <footer style="padding: 1em 2em;">
+        <small>
+            Please do not reply to this email, as this mailbox is not monitored. For assistance, contact developer Devin
+            Peevy at
+            <a href="mailto:devin@bigdevdog.com">devin@bigdevdog.com</a>.
+        </small>
+    </footer>
+</body>
+
+</html>
