@@ -1,7 +1,7 @@
 //! This module is an adapter over the `jsonwebtoken` crate, handling access tokens for the
 //! application.
 
-use chrono::{Duration, Utc};
+use chrono::{DateTime, Duration, Utc};
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 
@@ -35,6 +35,14 @@ impl AccessTokenPayload {
     /// Return the player_id represented by this token.
     pub fn sub(&self) -> &str {
         &self.sub
+    }
+
+    /// Returns true if a token was made before a specified time
+    ///
+    /// ### Arguments
+    /// - `time`: The time to compare to.
+    pub fn made_before(&self, time: &DateTime<Utc>) -> bool {
+        self.iat < time.timestamp() as usize
     }
 }
 
