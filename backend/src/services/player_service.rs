@@ -4,7 +4,7 @@ use regex::Regex;
 
 use crate::{
     adapters::{
-        email::{send_lockout_email, send_registration_email},
+        email::{send_change_username_email, send_lockout_email, send_registration_email},
         hashing::{generate_secret, verify_secret},
         jwt::{decode_access_token, generate_access_token},
         repositories::{Repository, counter_id::CounterId},
@@ -122,9 +122,7 @@ impl PlayerService {
         let player = match players.find_by_id(player_id).await? {
             Some(p) => p,
             None => {
-                return Err(DBoError::MissingDocument(String::from(
-                    Player::collection_name(),
-                )));
+                return Err(DBoError::missing_document(Player::collection_name()));
             }
         };
 
@@ -135,9 +133,9 @@ impl PlayerService {
         let token = match tokens.find_by_id(token_id).await? {
             Some(t) => t,
             None => {
-                return Err(DBoError::MissingDocument(String::from(
+                return Err(DBoError::missing_document(
                     ConfirmationToken::collection_name(),
-                )));
+                ));
             }
         };
 
@@ -196,9 +194,9 @@ impl PlayerService {
         let token = match tokens.find_by_id(token_id).await? {
             Some(t) => t,
             None => {
-                return Err(DBoError::MissingDocument(String::from(
+                return Err(DBoError::missing_document(
                     ConfirmationToken::collection_name(),
-                )));
+                ));
             }
         };
 
@@ -331,9 +329,7 @@ impl PlayerService {
         let player = match players.find_by_id(player_id).await? {
             Some(p) => p,
             None => {
-                return Err(DBoError::MissingDocument(String::from(
-                    Player::collection_name(),
-                )));
+                return Err(DBoError::missing_document(Player::collection_name()));
             }
         };
 
@@ -344,9 +340,9 @@ impl PlayerService {
         let old_token = match tokens.find_by_id(token_id).await? {
             Some(t) => t,
             None => {
-                return Err(DBoError::MissingDocument(String::from(
+                return Err(DBoError::missing_document(
                     ConfirmationToken::collection_name(),
-                )));
+                ));
             }
         };
 
@@ -421,9 +417,7 @@ impl PlayerService {
         let player = match players.find_by_id(token.player_id()).await? {
             Some(p) => p,
             None => {
-                return Err(DBoError::MissingDocument(String::from(
-                    Player::collection_name(),
-                )));
+                return Err(DBoError::missing_document(Player::collection_name()));
             }
         };
 
@@ -452,6 +446,7 @@ impl PlayerService {
     ///
     /// ### Errors
     /// - `TokenExpired` if the access token is expired.
+    /// - `TokenPremature` if the token was created before the player's sessions became invalidated.
     /// - `InvalidToken` if the token cannot be decoded because it is bad.
     /// - `MissingDocument` if the player cannot be identified by the token.
     /// - `AdapterError` if a database query fails, or if the token cannot be decoded due to a
@@ -467,11 +462,13 @@ impl PlayerService {
         let player = match players.find_by_id(payload.sub()).await? {
             Some(p) => p,
             None => {
-                return Err(DBoError::MissingDocument(String::from(
-                    Player::collection_name(),
-                )));
+                return Err(DBoError::missing_document(Player::collection_name()));
             }
         };
+
+        if payload.made_before(&player.valid_after().to_chrono()) {
+            return Err(DBoError::TokenPremature);
+        }
 
         if !verify_secret(password, player.password())? {
             return Err(DBoError::AuthenticationFailure);
@@ -481,6 +478,43 @@ impl PlayerService {
         counters
             .increment_counter(CounterId::AccountsDeleted)
             .await?;
+
+        Ok(())
+    }
+
+    pub async fn change_username(
+        players: &Repository<Player>,
+        tokens: &Repository<RefreshToken>,
+        token: &str,
+        password: &str,
+        new_username: &str,
+    ) -> DBoResult<()> {
+        let payload = decode_access_token(token)?;
+
+        let player = match players.find_by_id(payload.sub()).await? {
+            Some(p) => p,
+            None => return Err(DBoError::missing_document(Player::collection_name())),
+        };
+
+        if payload.made_before(&player.valid_after().to_chrono()) {
+            return Err(DBoError::TokenPremature);
+        }
+
+        if !verify_secret(password, player.password())? {
+            return Err(DBoError::AuthenticationFailure);
+        }
+
+        players.update_username(player.id(), new_username).await?;
+        tokens.delete_player_tokens(player.id()).await?;
+
+        send_change_username_email(
+            player.email(),
+            player.username(),
+            new_username,
+            player.preferred_language(),
+            player.gender(),
+        )
+        .await?;
 
         Ok(())
     }
