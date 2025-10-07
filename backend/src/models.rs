@@ -190,6 +190,14 @@ impl Player {
             false
         }
     }
+
+    pub fn valid_after(&self) -> &DateTime {
+        &self.session_valid_after
+    }
+
+    pub fn last_passwords(&self) -> &[String; 4] {
+        &self.last_passwords
+    }
 }
 
 impl Collectible for Player {
