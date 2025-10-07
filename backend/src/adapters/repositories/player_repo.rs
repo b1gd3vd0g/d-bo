@@ -5,9 +5,17 @@ use chrono::{Duration, Utc};
 use mongodb::{bson::doc, options::ReturnDocument};
 
 use crate::{
-    adapters::{mongo::case_insensitive_collation, repositories::Repository},
+    adapters::{
+        hashing::{hash_secret, verify_secret},
+        mongo::case_insensitive_collation,
+        repositories::Repository,
+    },
     errors::{DBoError, DBoResult},
-    models::{Collectible, Identifiable, Player},
+    handlers::responses::InputValidationResponse,
+    models::{
+        Collectible, Identifiable, Player,
+        player_validation::{validate_email, validate_password, validate_username},
+    },
 };
 
 impl Repository<Player> {
@@ -116,9 +124,7 @@ impl Repository<Player> {
             .await?;
 
         match update.matched_count {
-            0 => Err(DBoError::MissingDocument(String::from(
-                Player::collection_name(),
-            ))),
+            0 => Err(DBoError::missing_document(Player::collection_name())),
             _ => Ok(()),
         }
     }
@@ -139,9 +145,7 @@ impl Repository<Player> {
         let player = match self.find_by_id(player_id).await? {
             Some(p) => p,
             None => {
-                return Err(DBoError::MissingDocument(String::from(
-                    Player::collection_name(),
-                )));
+                return Err(DBoError::missing_document(Player::collection_name()));
             }
         };
 
@@ -179,9 +183,7 @@ impl Repository<Player> {
         let player = match self.find_by_id(player_id).await? {
             Some(p) => p,
             None => {
-                return Err(DBoError::MissingDocument(String::from(
-                    Player::collection_name(),
-                )));
+                return Err(DBoError::missing_document(Player::collection_name()));
             }
         };
 
@@ -204,9 +206,110 @@ impl Repository<Player> {
             .await?;
 
         match update.matched_count {
-            0 => Err(DBoError::MissingDocument(String::from(
-                Player::collection_name(),
-            ))),
+            0 => Err(DBoError::missing_document(Player::collection_name())),
+            _ => Ok(()),
+        }
+    }
+
+    pub async fn update_username(&self, player_id: &str, value: &str) -> DBoResult<()> {
+        let probs = validate_username(value);
+        if probs.is_some() {
+            return Err(DBoError::InvalidPlayerInfo(InputValidationResponse::new(
+                probs, None, None,
+            )));
+        }
+
+        let existing_player = self.find_by_username(value).await?;
+
+        if existing_player.is_some() {
+            return Err(DBoError::UniquenessViolation(true, false));
+        }
+
+        let update = self
+            .collection
+            .update_one(
+                doc! { Player::id_field(): player_id},
+                doc! { "$set": { "username": value } },
+            )
+            .await?;
+
+        match update.matched_count {
+            0 => Err(DBoError::missing_document(Player::collection_name())),
+            _ => Ok(()),
+        }
+    }
+
+    pub async fn update_email(&self, player_id: &str, value: &str) -> DBoResult<()> {
+        let probs = validate_email(value);
+        if probs.is_some() {
+            return Err(DBoError::InvalidPlayerInfo(InputValidationResponse::new(
+                None, None, probs,
+            )));
+        }
+
+        let existing_player = self.find_by_email(value).await?;
+
+        if existing_player.is_some() {
+            return Err(DBoError::UniquenessViolation(false, true));
+        }
+
+        let update = self
+            .collection
+            .update_one(
+                doc! { Player::id_field(): player_id},
+                doc! { "$set": { "email": value } },
+            )
+            .await?;
+
+        match update.matched_count {
+            0 => Err(DBoError::missing_document(Player::collection_name())),
+            _ => Ok(()),
+        }
+    }
+
+    pub async fn update_password(&self, player_id: &str, value: &str) -> DBoResult<()> {
+        let probs = validate_password(value);
+        if probs.is_some() {
+            return Err(DBoError::InvalidPlayerInfo(InputValidationResponse::new(
+                None, probs, None,
+            )));
+        }
+
+        let player = match self.find_by_id(player_id).await? {
+            Some(p) => p,
+            None => return Err(DBoError::missing_document(Player::collection_name())),
+        };
+
+        if verify_secret(value, player.password())? {
+            return Err(DBoError::InternalConflict);
+        }
+
+        for hash in player.last_passwords() {
+            if verify_secret(value, hash)? {
+                return Err(DBoError::InternalConflict);
+            }
+        }
+
+        let mut records = player.last_passwords().clone().to_vec();
+
+        for i in (1..4).rev() {
+            records[i] = records[i - 1].clone();
+        }
+
+        records[0] = String::from(player.password());
+
+        let hash = hash_secret(value)?;
+
+        let update = self
+            .collection
+            .update_one(
+                doc! { Player::id_field(): player_id },
+                doc! { "$set": { "password": &hash, "last_passwords": &records } },
+            )
+            .await?;
+
+        match update.matched_count {
+            0 => Err(DBoError::missing_document(Player::collection_name())),
             _ => Ok(()),
         }
     }
