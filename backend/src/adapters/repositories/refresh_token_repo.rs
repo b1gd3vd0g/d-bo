@@ -52,9 +52,7 @@ impl Repository<RefreshToken> {
         if option.is_some() {
             Ok(())
         } else {
-            Err(DBoError::MissingDocument(String::from(
-                RefreshToken::collection_name(),
-            )))
+            Err(DBoError::missing_document(RefreshToken::collection_name()))
         }
     }
 
