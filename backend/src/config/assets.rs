@@ -33,9 +33,51 @@ static DOT_PNG: &str = ".png";
 
 // Email template filenames
 #[doc(hidden)]
+static CHANGE_EMAIL_WARNING: &str = "change.email.warn";
+#[doc(hidden)]
+static CHANGE_EMAIL_CONFIRMATION: &str = "change.email.confirm";
+#[doc(hidden)]
+static CHANGE_PASSWORD: &str = "change.password";
+#[doc(hidden)]
+static CHANGE_USERNAME: &str = "change.username";
+#[doc(hidden)]
 static REGISTRATION_EMAIL: &str = "registration";
 #[doc(hidden)]
 static LOCKOUT_EMAIL: &str = "lockout";
+
+// Email subjects
+#[doc(hidden)]
+static EN_SUB_CHANGE_EMAIL_WARNING: &str = "Your email address for D-Bo is about to change.";
+#[doc(hidden)]
+static ES_SUB_CHANGE_EMAIL_WARNING: &str =
+    "Su dirección de correo electrónico de D-Bo está a punto de cambiar.";
+
+#[doc(hidden)]
+static EN_SUB_CHANGE_EMAIL_CONF: &str = "Confirm your new email address for D-Bo.";
+#[doc(hidden)]
+static ES_SUB_CHANGE_EMAIL_CONF: &str =
+    "Confirme su nueva dirección de correo electronico de D-Bo.";
+
+#[doc(hidden)]
+static EN_SUB_CHANGE_PASSWORD: &str = "Your password for D-Bo has changed.";
+#[doc(hidden)]
+static ES_SUB_CHANGE_PASSWORD: &str = "Su contraseña de D-Bo ha cambiado.";
+
+#[doc(hidden)]
+static EN_SUB_CHANGE_USERNAME: &str = "Your username for D-Bo has changed.";
+#[doc(hidden)]
+static ES_SUB_CHANGE_USERNAME: &str = "Su nombre de usuario de D-Bo ha cambiado.";
+
+#[doc(hidden)]
+static EN_SUB_REGISTRATION: &str = "Confirm your email address to start playing D-Bo!";
+#[doc(hidden)]
+static ES_SUB_REGISTRATION: &str =
+    "¡Confirme su dirección de correo electrónico para empezar a jugar D-Bo!";
+
+#[doc(hidden)]
+static EN_SUB_LOCKOUT: &str = "Your D-Bo account has been blocked!";
+#[doc(hidden)]
+static ES_SUB_LOCKOUT: &str = "¡Su cuenta de D-Bo ha sido bloqueado!";
 
 // Image filenames
 #[doc(hidden)]
@@ -65,9 +107,11 @@ fn template_path(template_name: &str, language_suffix: &str, extension: &str) ->
         .join(format!("{}{}{}", template_name, language_suffix, extension))
 }
 
-/// Holds both the HTML and plaintext versions of a single email template, both in a specific
-/// language.
-pub struct EmailFormatVariants {
+/// Holds the subject, as well as both HTML and plaintext templates of a specific email, in a
+/// specific language.
+pub struct LocalizedEmailInfo {
+    /// The subject line of the email.
+    pub subject: String,
     /// The HTML template for the email, which is most-often used.
     pub html: String,
     /// The plaintext template for the email, which is sent as a backup for primitive email clients,
@@ -76,17 +120,19 @@ pub struct EmailFormatVariants {
     pub txt: String,
 }
 
-impl EmailFormatVariants {
-    /// Create a new EmailFormatVariants struct
+impl LocalizedEmailInfo {
+    /// Create a new LocalizedEmailInfo struct
     ///
     /// ### Arguments
     /// - `template_name`: The email template title
     /// - `language_suffix`: The language suffix for the files
+    /// - `subject`: The subject line of the email
     ///
     /// ### Panics
     /// If either file cannot be found
-    fn new(template_name: &str, language_suffix: &str) -> Self {
+    fn new(template_name: &str, language_suffix: &str, subject: &str) -> Self {
         Self {
+            subject: String::from(subject),
             html: read_template(&template_path(template_name, language_suffix, DOT_HTML)),
             txt: read_template(&template_path(template_name, language_suffix, DOT_TXT)),
         }
@@ -96,9 +142,9 @@ impl EmailFormatVariants {
 /// Holds all variants of a single email template, sorted by language first, and then by format.
 pub struct EmailLocalizationVariants {
     /// The English translations of the email template.
-    pub en: EmailFormatVariants,
+    pub en: LocalizedEmailInfo,
     /// The Spanish translations of the email template.
-    pub es: EmailFormatVariants,
+    pub es: LocalizedEmailInfo,
 }
 
 impl EmailLocalizationVariants {
@@ -109,14 +155,14 @@ impl EmailLocalizationVariants {
     ///
     /// ### Panics
     /// If any of the four required files cannot be found
-    fn new(template_name: &str) -> Self {
+    fn new(template_name: &str, en_subject: &str, es_subject: &str) -> Self {
         Self {
-            en: EmailFormatVariants::new(template_name, DOT_EN),
-            es: EmailFormatVariants::new(template_name, DOT_ES),
+            en: LocalizedEmailInfo::new(template_name, DOT_EN, en_subject),
+            es: LocalizedEmailInfo::new(template_name, DOT_ES, es_subject),
         }
     }
 
-    pub fn language(&self, language: &LanguagePreference) -> &EmailFormatVariants {
+    pub fn language(&self, language: &LanguagePreference) -> &LocalizedEmailInfo {
         match language {
             LanguagePreference::English => &self.en,
             LanguagePreference::Spanish => &self.es,
@@ -127,6 +173,17 @@ impl EmailLocalizationVariants {
 /// Holds all email templates used by the application, sorted by purpose first, then by language,
 /// and finally by format.
 pub struct EmailTemplates {
+    /// An email sent to the proposed email address following a player changing their email address,
+    /// allowing them to confirm the new mailbox.
+    pub change_email_confirmation: EmailLocalizationVariants,
+    /// An email sent to the current email address following a player changing their email address,
+    /// informing them of the change.
+    pub change_email_warning: EmailLocalizationVariants,
+    /// An email sent to the player following a password change, informing them and allowing them to
+    /// reset their password securely for 24 hours.
+    pub change_password: EmailLocalizationVariants,
+    /// An email sent to the player to inform them of a changed username.
+    pub change_username: EmailLocalizationVariants,
     /// The lockout notification email template, sent after five or more failed login attempts.
     pub lockout: EmailLocalizationVariants,
     /// The registration email template, sent immediately upon player account creation.
@@ -140,8 +197,32 @@ impl EmailTemplates {
     /// If any of the required template files cannot be found.
     fn configure() -> Self {
         Self {
-            lockout: EmailLocalizationVariants::new(LOCKOUT_EMAIL),
-            registration: EmailLocalizationVariants::new(REGISTRATION_EMAIL),
+            change_email_confirmation: EmailLocalizationVariants::new(
+                CHANGE_EMAIL_CONFIRMATION,
+                EN_SUB_CHANGE_EMAIL_CONF,
+                ES_SUB_CHANGE_EMAIL_CONF,
+            ),
+            change_email_warning: EmailLocalizationVariants::new(
+                CHANGE_EMAIL_WARNING,
+                EN_SUB_CHANGE_EMAIL_WARNING,
+                ES_SUB_CHANGE_EMAIL_WARNING,
+            ),
+            change_password: EmailLocalizationVariants::new(
+                CHANGE_PASSWORD,
+                EN_SUB_CHANGE_PASSWORD,
+                ES_SUB_CHANGE_PASSWORD,
+            ),
+            change_username: EmailLocalizationVariants::new(
+                CHANGE_USERNAME,
+                EN_SUB_CHANGE_USERNAME,
+                ES_SUB_CHANGE_USERNAME,
+            ),
+            lockout: EmailLocalizationVariants::new(LOCKOUT_EMAIL, EN_SUB_LOCKOUT, ES_SUB_LOCKOUT),
+            registration: EmailLocalizationVariants::new(
+                REGISTRATION_EMAIL,
+                EN_SUB_REGISTRATION,
+                ES_SUB_REGISTRATION,
+            ),
         }
     }
 }
