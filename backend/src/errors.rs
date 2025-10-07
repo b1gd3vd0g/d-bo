@@ -28,6 +28,10 @@ pub enum DBoError {
     /// An update to a document failed due to a conflicting state within that same document. The
     /// collection name is provided in the String.
     InternalConflict,
+    /// An email could not be sent to a player because their email address is **invalid**; it could
+    /// not be parsed into a `lettre::message::Mailbox`. This should not happen due to our player
+    /// validation functions, but is not impossible.
+    InvalidEmailAddress,
     /// A user has tried to create a new account with an invalid field.
     InvalidPlayerInfo(InputValidationResponse),
     /// A provided token is invalid.
