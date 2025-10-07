@@ -229,7 +229,10 @@ impl Repository<Player> {
             .collection
             .update_one(
                 doc! { Player::id_field(): player_id},
-                doc! { "$set": { "username": value } },
+                doc! { "$set": {
+                   "username": value,
+                   "session_valid_after": DateTime::now()
+                } },
             )
             .await?;
 
@@ -239,7 +242,7 @@ impl Repository<Player> {
         }
     }
 
-    pub async fn update_email(&self, player_id: &str, value: &str) -> DBoResult<()> {
+    pub async fn update_proposed_email(&self, player_id: &str, value: &str) -> DBoResult<()> {
         let probs = validate_email(value);
         if probs.is_some() {
             return Err(DBoError::InvalidPlayerInfo(InputValidationResponse::new(
@@ -257,12 +260,40 @@ impl Repository<Player> {
             .collection
             .update_one(
                 doc! { Player::id_field(): player_id},
-                doc! { "$set": { "email": value } },
+                doc! { "$set": { "proposed_email": value } },
             )
             .await?;
 
         match update.matched_count {
             0 => Err(DBoError::missing_document(Player::collection_name())),
+            _ => Ok(()),
+        }
+    }
+
+    pub async fn confirm_proposed_email(&self, player_id: &str) -> DBoResult<()> {
+        let player = match self.find_by_id(player_id).await? {
+            Some(p) => p,
+            None => return Err(DBoError::missing_document(Player::collection_name())),
+        };
+
+        if player.proposed_email().is_none() {
+            return Err(DBoError::InternalConflict);
+        }
+
+        let update = self
+            .collection
+            .update_one(
+                doc! { Player::id_field(): player_id },
+                doc! { "$set": {
+                    "email": player.proposed_email(),
+                    "proposed_email": None::<String>,
+                    "session_valid_after": DateTime::now()
+                } },
+            )
+            .await?;
+
+        match update.matched_count {
+            0 => return Err(DBoError::missing_document(Player::collection_name())),
             _ => Ok(()),
         }
     }
@@ -304,7 +335,11 @@ impl Repository<Player> {
             .collection
             .update_one(
                 doc! { Player::id_field(): player_id },
-                doc! { "$set": { "password": &hash, "last_passwords": &records } },
+                doc! { "$set": {
+                    "password": &hash,
+                    "last_passwords": &records,
+                    "session_valid_after": DateTime::now()
+                } },
             )
             .await?;
 
