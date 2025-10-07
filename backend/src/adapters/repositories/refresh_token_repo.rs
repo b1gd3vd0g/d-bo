@@ -34,6 +34,13 @@ impl Repository<RefreshToken> {
         Ok(())
     }
 
+    pub async fn delete_player_tokens(&self, player_id: &str) -> DBoResult<()> {
+        self.collection
+            .delete_many(doc! { "player_id": player_id })
+            .await?;
+        Ok(())
+    }
+
     /// Replace an existing refresh token with a new one.
     ///
     /// ### Arguments
