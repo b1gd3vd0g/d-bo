@@ -43,9 +43,19 @@ pub enum DBoError {
     RelationalConflict,
     /// Some kind of token (be it an email confirmation token, JWT, etc.) is expired.
     TokenExpired,
+    /// The token was created earlier than is allowed. This most likely happens when a player's
+    /// sessions have been invalidated, but a request was made using a JSON Web Token before that
+    /// invalidation took place.
+    TokenPremature,
     /// A user has tried to create a new account, but its unique fields are already in use.
     /// The first boolean represents a username violation, the second represents the email.
     UniquenessViolation(bool, bool),
+}
+
+impl DBoError {
+    pub fn missing_document(collection: &str) -> Self {
+        Self::MissingDocument(String::from(collection))
+    }
 }
 
 impl From<HashingError> for DBoError {
