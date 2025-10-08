@@ -130,4 +130,8 @@ impl Repositories {
     pub fn refresh_tokens(&self) -> &Repository<RefreshToken> {
         &self.refresh_tokens
     }
+
+    pub fn undo_tokens(&self) -> &Repository<UndoToken> {
+        &self.undo_tokens
+    }
 }
