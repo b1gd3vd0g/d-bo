@@ -375,6 +375,7 @@ impl Indexed for ConfirmationToken {
                     .options(
                         IndexOptions::builder()
                             .name(String::from("created-ttl-2d"))
+                            .expire_after(StdDuration::from_secs(60 * 60 * 24 * 2))
                             .build(),
                     )
                     .build(),
