@@ -34,6 +34,13 @@ impl Repository<RefreshToken> {
         Ok(())
     }
 
+    /// Delete all tokens associated with a specific player.
+    ///
+    /// ### Arguments
+    /// - `player_id`: The player's unique identifier
+    ///
+    /// ### Errors
+    /// - `AdapterError` if the query should fail
     pub async fn delete_player_tokens(&self, player_id: &str) -> DBoResult<()> {
         self.collection
             .delete_many(doc! { "player_id": player_id })
@@ -63,7 +70,7 @@ impl Repository<RefreshToken> {
         }
     }
 
-    /// Find all refresh tokens associated with a player account.
+    /// Find all refresh tokens associated with a player account, in order of oldest to newest.
     ///
     /// ### Arguments
     /// - `player_id`: The player's unique identifier
