@@ -8,15 +8,16 @@
 pub mod player_validation;
 pub mod submodels;
 
-use std::array;
+use std::{array, time::Duration as StdDuration};
 
-use bson::DateTime;
-use chrono::{Duration, Utc};
+use bson::{DateTime, doc};
+use chrono::{Duration as ChronoDuration, Utc};
+use mongodb::{Collection, IndexModel, options::IndexOptions};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
-    adapters::hashing::hash_secret,
+    adapters::{hashing::hash_secret, mongo::case_insensitive_collation},
     errors::DBoResult,
     models::{
         player_validation::validate_all,
@@ -42,10 +43,21 @@ pub trait Identifiable {
     fn id_field() -> &'static str;
 }
 
+pub trait Indexed: Send + Sync + Sized {
+    async fn index(collection: &Collection<Self>);
+}
+
 /// A composite trait that is required for any database model. Any struct implementing these traits
 /// will automatically receive the trait `Model`.
-pub trait Model: Collectible + Identifiable + Serialize + for<'de> Deserialize<'de> {}
-impl<T> Model for T where T: Collectible + Identifiable + Serialize + for<'de> Deserialize<'de> {}
+pub trait Model:
+    Collectible + Identifiable + Indexed + Serialize + for<'de> Deserialize<'de>
+{
+}
+
+impl<T> Model for T where
+    T: Collectible + Identifiable + Indexed + Serialize + for<'de> Deserialize<'de>
+{
+}
 
 // /////////////// //
 // DATABASE MODELS //
@@ -220,6 +232,63 @@ impl Identifiable for Player {
     }
 }
 
+impl Indexed for Player {
+    /// Index a collection of Players. These indices include:
+    /// - A uniqueness index on `player_id`
+    /// - A case-insensitive uniqueness index on `username`
+    /// - A case-insensitive uniqueness index on `email`
+    /// - A conditional 2-day TTL index on `created` when `confirmed == false`
+    ///
+    /// ### Panics
+    /// If the indices cannot be created for any reason
+    async fn index(collection: &Collection<Self>) {
+        collection
+            .create_indexes(vec![
+                IndexModel::builder()
+                    .keys(doc! { Self::id_field(): 1 })
+                    .options(
+                        IndexOptions::builder()
+                            .name(String::from("player-id-unique"))
+                            .unique(true)
+                            .build(),
+                    )
+                    .build(),
+                IndexModel::builder()
+                    .keys(doc! { "username": 1 })
+                    .options(
+                        IndexOptions::builder()
+                            .name(String::from("username-unique-insensitive"))
+                            .unique(true)
+                            .collation(case_insensitive_collation())
+                            .build(),
+                    )
+                    .build(),
+                IndexModel::builder()
+                    .keys(doc! { "email": 1 })
+                    .options(
+                        IndexOptions::builder()
+                            .name(String::from("email-unique-insensitive"))
+                            .unique(true)
+                            .collation(case_insensitive_collation())
+                            .build(),
+                    )
+                    .build(),
+                IndexModel::builder()
+                    .keys(doc! { "created": 1 })
+                    .options(
+                        IndexOptions::builder()
+                            .name(String::from("created-ttl-2d-condition-unconfirmed"))
+                            .expire_after(StdDuration::from_secs(60 * 60 * 24 * 2))
+                            .partial_filter_expression(doc! { "confirmed": false })
+                            .build(),
+                    )
+                    .build(),
+            ])
+            .await
+            .expect("Failed to index the Player collection!");
+    }
+}
+
 // CONFIRMATION TOKEN
 // //////////////////
 
@@ -252,7 +321,7 @@ impl ConfirmationToken {
     }
 
     pub fn expired(&self) -> bool {
-        Utc::now() - self.created.to_chrono() > Duration::seconds(60 * 15)
+        Utc::now() - self.created.to_chrono() > ChronoDuration::seconds(60 * 15)
     }
 }
 
@@ -269,6 +338,49 @@ impl Identifiable for ConfirmationToken {
 
     fn id_field() -> &'static str {
         "token_id"
+    }
+}
+
+impl Indexed for ConfirmationToken {
+    /// Index a collection of ConfirmationTokens. These indices include:
+    /// - A uniqueness index on `token_id`
+    /// - A uniqueness index on `player_id`
+    /// - A 2-day TTL index on `created`
+    ///
+    /// ### Panics
+    /// If the indices cannot be created for any reason
+    async fn index(collection: &Collection<Self>) {
+        collection
+            .create_indexes(vec![
+                IndexModel::builder()
+                    .keys(doc! { Self::id_field(): 1 })
+                    .options(
+                        IndexOptions::builder()
+                            .name(String::from("token-id-unique"))
+                            .unique(true)
+                            .build(),
+                    )
+                    .build(),
+                IndexModel::builder()
+                    .keys(doc! { "player_id": 1 })
+                    .options(
+                        IndexOptions::builder()
+                            .name(String::from("player-id-unique"))
+                            .unique(true)
+                            .build(),
+                    )
+                    .build(),
+                IndexModel::builder()
+                    .keys(doc! { "created": 1 })
+                    .options(
+                        IndexOptions::builder()
+                            .name(String::from("created-ttl-2d"))
+                            .build(),
+                    )
+                    .build(),
+            ])
+            .await
+            .expect("Failed to index the ConfirmationToken collection!");
     }
 }
 
@@ -306,11 +418,35 @@ impl Identifiable for Counter {
     }
 }
 
+impl Indexed for Counter {
+    /// Index a collection of Counters with the following index:
+    /// - A uniqueness index on `id`
+    ///
+    /// ### Panics
+    /// If the index cannot be created for any reason
+    async fn index(collection: &Collection<Self>) {
+        collection
+            .create_index(
+                IndexModel::builder()
+                    .keys(doc! { Self::id_field(): 1 })
+                    .options(
+                        IndexOptions::builder()
+                            .name(String::from("id-unique"))
+                            .unique(true)
+                            .build(),
+                    )
+                    .build(),
+            )
+            .await
+            .expect("Failed to index the Counter collection!");
+    }
+}
+
 // REFRESH TOKEN
 // /////////////
 
 /// A document representing a refresh token, which can validate a player whose access token has
-/// expired for up to 7 days.
+/// expired for up to 30 days.
 #[derive(Clone, Deserialize, Serialize)]
 pub struct RefreshToken {
     /// A unique UUID v4 to identify the token
@@ -357,7 +493,7 @@ impl RefreshToken {
     }
 
     pub fn expired(&self) -> bool {
-        Utc::now() - self.created.to_chrono() > Duration::seconds(60 * 60 * 24 * 30)
+        Utc::now() - self.created.to_chrono() > ChronoDuration::seconds(60 * 60 * 24 * 30)
     }
 }
 
@@ -374,6 +510,49 @@ impl Identifiable for RefreshToken {
 
     fn id_field() -> &'static str {
         "token_id"
+    }
+}
+
+impl Indexed for RefreshToken {
+    /// Index a collection of RefreshTokens. The indices include:
+    /// - A uniqueness index on `token_id`
+    /// - A standard index on `player_id`
+    /// - A 30-day TTL index on `created`
+    ///
+    /// ### Panics
+    /// If the indices cannot be created for any reason
+    async fn index(collection: &Collection<Self>) {
+        collection
+            .create_indexes(vec![
+                IndexModel::builder()
+                    .keys(doc! { Self::id_field(): 1 })
+                    .options(
+                        IndexOptions::builder()
+                            .name(String::from("token-id-unique"))
+                            .unique(true)
+                            .build(),
+                    )
+                    .build(),
+                IndexModel::builder()
+                    .keys(doc! { "player_id": 1 })
+                    .options(
+                        IndexOptions::builder()
+                            .name(String::from("player-id-std"))
+                            .build(),
+                    )
+                    .build(),
+                IndexModel::builder()
+                    .keys(doc! { "created": 1 })
+                    .options(
+                        IndexOptions::builder()
+                            .name(String::from("created-ttl-30d"))
+                            .expire_after(StdDuration::from_secs(60 * 60 * 24 * 30))
+                            .build(),
+                    )
+                    .build(),
+            ])
+            .await
+            .expect("Failed to index the RefreshToken collection!");
     }
 }
 
@@ -407,7 +586,7 @@ impl UndoToken {
     }
 
     pub fn expired(&self) -> bool {
-        Utc::now() - self.created.to_chrono() > Duration::seconds(60 * 60 * 24)
+        Utc::now() - self.created.to_chrono() > ChronoDuration::seconds(60 * 60 * 24)
     }
 }
 
@@ -424,5 +603,49 @@ impl Identifiable for UndoToken {
 
     fn id_field() -> &'static str {
         "token_id"
+    }
+}
+
+impl Indexed for UndoToken {
+    /// Index a collection of UndoTokens. The indices include:
+    /// - A uniqueness index on `token_id`
+    /// - A compound uniqueness index on `player_id` and `function`
+    /// - A 1-day TTL index on `created`
+    ///
+    /// ### Panics
+    /// If the indices cannot be created for any reason
+    async fn index(collection: &Collection<Self>) {
+        collection
+            .create_indexes(vec![
+                IndexModel::builder()
+                    .keys(doc! { Self::id_field(): 1 })
+                    .options(
+                        IndexOptions::builder()
+                            .name(String::from("token-id-unique"))
+                            .unique(true)
+                            .build(),
+                    )
+                    .build(),
+                IndexModel::builder()
+                    .keys(doc! { "created": 1 })
+                    .options(
+                        IndexOptions::builder()
+                            .name(String::from("created-1d-ttl"))
+                            .expire_after(StdDuration::from_secs(60 * 60 * 24))
+                            .build(),
+                    )
+                    .build(),
+                IndexModel::builder()
+                    .keys(doc! { "player_id": 1, "function": 1 })
+                    .options(
+                        IndexOptions::builder()
+                            .name(String::from("player-id-function-compound-unique"))
+                            .unique(true)
+                            .build(),
+                    )
+                    .build(),
+            ])
+            .await
+            .expect("Failed to index the UndoToken collection!");
     }
 }
