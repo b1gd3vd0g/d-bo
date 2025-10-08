@@ -310,6 +310,23 @@ pub async fn send_lockout_email(
     Ok(())
 }
 
+/// Send an email to the player's newly proposed email address, providing them with a link to
+/// confirm their new mailbox. It also includes a link to **undo** the operation, if the email was
+/// sent to them by mistake.
+///
+/// ### Arguments
+/// - `username`: The player's username
+/// - `old_email`: The player's current email address
+/// - `new_email`: The player's newly proposed email address, to which this email is sent
+/// - `player_id`: The player's unique identifier
+/// - `conf_token_id`: The ID of the confirmation token used to confirm the change
+/// - `undo_token_id`: The ID of the undo token used to revert the change
+/// - `language`: The language to send the email in
+/// - `pronoun`: The player's preferred pronouns, for Spanish emails
+///
+/// ### Errors
+/// - `InvalidEmailAddress` if the new email cannot be parsed into a mailbox
+/// - `AdapterError` if the email cannot be constructed or sent due to a server-side error
 pub async fn send_change_email_confirmation_email(
     username: &str,
     old_email: &str,
@@ -343,6 +360,21 @@ pub async fn send_change_email_confirmation_email(
     Ok(())
 }
 
+/// Send a warning email to a player's current confirmed email address, informing them that a
+/// request has been made to change their email address. This email provides them with a link
+/// allowing them to undo the change if they did not request this.
+///
+/// ### Arguments
+/// - `username`: The player's username
+/// - `old_email`: The player's current email address, to which this email is sent
+/// - `new_email`: The player's newly proposed email address
+/// - `player_id`: The player's unique identifier
+/// - `undo_token_id`: The undo token's unique identifier
+/// - `language`: The language to send the email in
+///
+/// ### Errors
+/// - `InvalidEmailAddress` if the old email cannot be parsed into a Mailbox
+/// - `AdapterError` if the message cannot be constructed or sent due to a server-side error
 pub async fn send_change_email_warning_email(
     username: &str,
     old_email: &str,
@@ -373,6 +405,20 @@ pub async fn send_change_email_warning_email(
     Ok(())
 }
 
+/// Send an email to the player informing them that their password has been changed. This email
+/// provides them with a link to reset their password securely if this was done by mistake.
+///
+/// ### Arguments
+/// - `player_email`: The player's email address
+/// - `username`: The player's username
+/// - `player_id`: The player's unique identifier
+/// - `undo_token_id`: The undo token's unique identifier
+/// - `language`: The language to send the email in
+/// - `pronoun`: The player's preferred pronouns, for valid Spanish emails
+///
+/// ### Errors
+/// - `InvalidEmailAddress` if the player's email address cannot be parsed into a Mailbox
+/// - `AdapterError` if the message cannot be constructed or sent due to a server-side error
 pub async fn send_change_password_email(
     player_email: &str,
     username: &str,
@@ -401,6 +447,18 @@ pub async fn send_change_password_email(
     Ok(())
 }
 
+/// Send an email to a player informing them that their username has been changed.
+///
+/// ### Arguments
+/// - `player_email`: The email to send the message to
+/// - `old_username`: The player's old username
+/// - `new_username`: The player's new username
+/// - `language`: The language to send the email in
+/// - `pronoun`: The player's preferred pronouns, for valid Spanish emails
+///
+/// ### Errors
+/// - `InvalidEmailAddress` if the player email cannot be parsed into a Mailbox
+/// - `AdapterError` if the message cannot be constructed or sent due to a server-side error
 pub async fn send_change_username_email(
     player_email: &str,
     old_username: &str,
