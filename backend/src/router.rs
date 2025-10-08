@@ -1,14 +1,19 @@
 //! This module will handle the creation of the HTTP router, as well as configure CORS settings.
 
-use axum::{Router, routing::post};
+use axum::{
+    Router,
+    routing::{post, put},
+};
 use tower_http::cors::{Any, CorsLayer};
 
 use crate::{
     adapters::repositories::Repositories,
     handlers::player_handlers::{
         handle_player_account_confirmation, handle_player_account_rejection,
-        handle_player_deletion, handle_player_login, handle_player_refresh,
-        handle_player_registration, handle_resend_registration_email,
+        handle_player_deletion, handle_player_login, handle_player_password_change,
+        handle_player_proposed_email_change, handle_player_proposed_email_confirmation,
+        handle_player_refresh, handle_player_registration, handle_player_username_change,
+        handle_resend_registration_email,
     },
 };
 
@@ -36,5 +41,21 @@ pub fn router() -> Router<Repositories> {
         )
         .route("/players/login", post(handle_player_login))
         .route("/players/refresh", post(handle_player_refresh))
+        .route(
+            "/players/change/password",
+            put(handle_player_password_change),
+        )
+        .route(
+            "/players/change/username",
+            put(handle_player_username_change),
+        )
+        .route(
+            "/players/change/proposed-email",
+            put(handle_player_proposed_email_change),
+        )
+        .route(
+            "/players/{player_id}/confirm-proposed-email/{token_id}",
+            put(handle_player_proposed_email_confirmation),
+        )
         .layer(cors())
 }
