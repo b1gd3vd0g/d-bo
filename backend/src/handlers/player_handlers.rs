@@ -120,7 +120,9 @@ pub async fn handle_player_registration(
                 Json(ExistingFieldViolationResponse::new(username, email)),
             )
                 .into_response(),
-            DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
+            DBoError::AdapterError | DBoError::InvalidEmailAddress => {
+                (StatusCode::INTERNAL_SERVER_ERROR).into_response()
+            }
             _ => unexpected_error(e, "player registration"),
         },
     }
@@ -216,7 +218,9 @@ pub async fn handle_player_login(
                 Json(AccountLockedResponse::new(time)),
             )
                 .into_response(),
-            DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
+            DBoError::AdapterError | DBoError::InvalidEmailAddress => {
+                (StatusCode::INTERNAL_SERVER_ERROR).into_response()
+            }
             _ => unexpected_error(e, "player login"),
         },
     }
@@ -244,7 +248,9 @@ pub async fn handle_resend_registration_email(
                 .into_response(),
             DBoError::InternalConflict => (StatusCode::CONFLICT).into_response(),
             DBoError::RelationalConflict => (StatusCode::FORBIDDEN).into_response(),
-            DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
+            DBoError::AdapterError | DBoError::InvalidEmailAddress => {
+                (StatusCode::INTERNAL_SERVER_ERROR).into_response()
+            }
             _ => unexpected_error(e, "resend registration email"),
         },
     }
