@@ -4,16 +4,20 @@ use regex::Regex;
 
 use crate::{
     adapters::{
-        email::{send_change_username_email, send_lockout_email, send_registration_email},
+        email::{
+            send_change_email_confirmation_email, send_change_email_warning_email,
+            send_change_password_email, send_change_username_email, send_lockout_email,
+            send_registration_email,
+        },
         hashing::{generate_secret, verify_secret},
-        jwt::{decode_access_token, generate_access_token},
+        jwt::generate_access_token,
         repositories::{Repository, counter_id::CounterId},
     },
     errors::{DBoError, DBoResult},
     handlers::responses::SafePlayerResponse,
     models::{
-        Collectible, ConfirmationToken, Counter, Identifiable, Player, RefreshToken,
-        submodels::{Gender, LanguagePreference},
+        Collectible, ConfirmationToken, Counter, Identifiable, Player, RefreshToken, UndoToken,
+        submodels::{Gender, LanguagePreference, UndoTokenType},
     },
     services::types::LoginTokenInfo,
 };
@@ -43,6 +47,7 @@ impl PlayerService {
     /// - `InvalidPlayerInfo` if the username, password, or email cannot pass validation.
     /// - `UniquenessViolation` if the username or email are not case-insensitively unique.
     /// - `ServerSideError` if the email templates cannot be found.
+    /// - `InvalidEmailAddress` if the user's email address could not be parsed into a Mailbox
     /// - `AdapterError` if a database query fails, if the password cannot be hashed, or if the
     ///   confirmation email could not be sent
     pub async fn register_player(
@@ -238,6 +243,8 @@ impl PlayerService {
     ///   fifth (or greater) time, resulting in a new lockout.
     /// - `MissingDocument` in the *extremely* unlikely case that the player document gets deleted
     ///   midway through this request and cannot be found when trying to update it.
+    /// - `InvalidEmailAddress` if the lockout email cannot be sent because the player's stored
+    ///   email address cannot be parsed into a mailbox.
     /// - `AdapterError` if a database query fails, if the password or refresh token
     ///   secret cannot be hashed, if the access JWT cannot be created, or if the lockout email
     ///   fails to be sent.
@@ -319,6 +326,8 @@ impl PlayerService {
     /// - `MissingDocument` if either the player or token cannot be found
     /// - `InternalConflict` if the player account is already confirmed
     /// - `RelationalConflict` if the token is not associated with the same player
+    /// - `InvalidEmailAddress` if the email cannot be sent because a player's email address cannot
+    ///   be parsed into a Mailbox
     /// - `AdapterError` if a database query should fail, or if the email could not be sent
     pub async fn resend_registration_email(
         players: &Repository<Player>,
@@ -441,7 +450,7 @@ impl PlayerService {
     /// ### Arguments
     /// - `players`: The Player Repository
     /// - `counters`: The Counter Repository
-    /// - `token`: The player's access token JWT
+    /// - `jwt`: The player's access JWT
     /// - `password`: The player's password
     ///
     /// ### Errors
@@ -449,26 +458,16 @@ impl PlayerService {
     /// - `TokenPremature` if the token was created before the player's sessions became invalidated.
     /// - `InvalidToken` if the token cannot be decoded because it is bad.
     /// - `MissingDocument` if the player cannot be identified by the token.
+    /// - `AuthenticationFailure` if the password does not match the database.
     /// - `AdapterError` if a database query fails, or if the token cannot be decoded due to a
     ///   server-side error.
     pub async fn delete_player_account(
         players: &Repository<Player>,
         counters: &Repository<Counter>,
-        token: &str,
+        jwt: &str,
         password: &str,
     ) -> DBoResult<()> {
-        let payload = decode_access_token(token)?;
-
-        let player = match players.find_by_id(payload.sub()).await? {
-            Some(p) => p,
-            None => {
-                return Err(DBoError::missing_document(Player::collection_name()));
-            }
-        };
-
-        if payload.made_before(&player.valid_after().to_chrono()) {
-            return Err(DBoError::TokenPremature);
-        }
+        let player = players.find_by_token(jwt).await?;
 
         if !verify_secret(password, player.password())? {
             return Err(DBoError::AuthenticationFailure);
@@ -482,23 +481,38 @@ impl PlayerService {
         Ok(())
     }
 
+    /// Change a player's username in the database. Find the player using their access token, verify
+    /// that their password is correct, update the username, invalidate all player sessions, and
+    /// send an email to the player informing them of this change.
+    ///
+    /// ### Arguments
+    /// - `players`: The Player repository
+    /// - `tokens`: The Refresh Token repository
+    /// - `jwt`: The player's access token
+    /// - `password`: The player's password
+    /// - `new_username`: The player's new username.
+    ///
+    /// ### Errors
+    /// - `TokenExpired` if the jwt is expired
+    /// - `TokenPremature` if the jwt was created before the player's sessions were invalidated
+    /// - `InvalidToken` if the jwt cannot be decoded because it is bad
+    /// - `MissingDocument` if the player cannot be found
+    /// - `AuthenticationFailure` if the password does not match the database
+    /// - `InvalidPlayerInfo` if the new username is not valid
+    /// - `UniquenessViolation` if the new username is not case-insensitively unique
+    /// - `InvalidEmailAddress` if the email cannot be sent because a player's stored email address
+    ///   cannot be parsed into a Mailbox
+    /// - `AdapterError` if a database query fails, or if the token cannot be decoded due to a
+    ///   server-side error, or if the player's stored hash could not be parsed, or if the
+    ///   notification email cannot be sent due to a server-side error.
     pub async fn change_username(
         players: &Repository<Player>,
         tokens: &Repository<RefreshToken>,
-        token: &str,
+        jwt: &str,
         password: &str,
         new_username: &str,
     ) -> DBoResult<()> {
-        let payload = decode_access_token(token)?;
-
-        let player = match players.find_by_id(payload.sub()).await? {
-            Some(p) => p,
-            None => return Err(DBoError::missing_document(Player::collection_name())),
-        };
-
-        if payload.made_before(&player.valid_after().to_chrono()) {
-            return Err(DBoError::TokenPremature);
-        }
+        let player = players.find_by_token(jwt).await?;
 
         if !verify_secret(password, player.password())? {
             return Err(DBoError::AuthenticationFailure);
@@ -513,6 +527,200 @@ impl PlayerService {
             new_username,
             player.preferred_language(),
             player.gender(),
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    /// Change a player's proposed email address. Find the player in the database by their access
+    /// token. Confirm that their password matches the database. Validate the new email address, and
+    /// ensure that it is case-insensitively unique. Update the player's "proposed_email" field.
+    /// Create a new undo token and a new confirmation token, and insert both into the database.
+    /// Send a warning email to the player's current email address, and send a confirmation email to
+    /// their new one.
+    ///
+    /// ### Arguments
+    /// - `players`: The Player repository
+    /// - `conf_tokens`: The Confirmation Token repository
+    /// - `undo_tokens`: The Undo Token repository
+    /// - `jwt`: The player's access token
+    /// - `password`: The player's password
+    /// - `new_email`: The player's new proposed email address
+    ///
+    /// ### Errors
+    /// - `TokenExpired` if the jwt is expired
+    /// - `TokenPremature` if the jwt was created before the player's sessions were invalidated
+    /// - `InvalidToken` if the jwt cannot be decoded because it is bad
+    /// - `MissingDocument` if the player cannot be found
+    /// - `AuthenticationFailure` if the password does not match the database
+    /// - `InvalidPlayerInfo` if the new email is not valid
+    /// - `UniquenessViolation` if the new email is not case-insensitively unique
+    /// - `InvalidEmailAddress` if either the *new* email address **or** the currently stored email
+    ///   address cannot be parsed into a Mailbox
+    /// - `AdapterError` if a database query fails, or if the token cannot be decoded due to a
+    ///   server-side error, or if the player's stored hash could not be parsed, or if the
+    ///   notification email cannot be sent due to a server-side error.
+    pub async fn change_proposed_email(
+        players: &Repository<Player>,
+        conf_tokens: &Repository<ConfirmationToken>,
+        undo_tokens: &Repository<UndoToken>,
+        jwt: &str,
+        password: &str,
+        new_email: &str,
+    ) -> DBoResult<()> {
+        let player = players.find_by_token(jwt).await?;
+
+        if !verify_secret(password, player.password())? {
+            return Err(DBoError::AuthenticationFailure);
+        }
+
+        players
+            .update_proposed_email(player.id(), new_email)
+            .await?;
+
+        let undo_token = UndoToken::new(player.id(), &UndoTokenType::Email);
+        undo_tokens.insert(&undo_token).await?;
+
+        let conf_token = ConfirmationToken::new(player.id());
+        conf_tokens.insert(&conf_token).await?;
+
+        send_change_email_warning_email(
+            player.username(),
+            player.email(),
+            new_email,
+            player.id(),
+            undo_token.id(),
+            player.preferred_language(),
+        )
+        .await?;
+
+        send_change_email_confirmation_email(
+            player.username(),
+            player.email(),
+            new_email,
+            player.id(),
+            conf_token.id(),
+            undo_token.id(),
+            player.preferred_language(),
+            player.pronoun(),
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    /// Confirm a player's proposed email address. Find the player and the confirmation token by
+    /// their ids. Confirm that the token is unexpired, and that it represents the same player.
+    /// Confirm the player's proposed email address, validating it and ensuring that it is still
+    /// unique. Change the "email" field to the proposed email, change the "proposed_email" field
+    /// back to none, and invalidate a player's access tokens by setting the "session_valid_after"
+    /// field. Delete the confirmation token from the database, as well as the undo token that was
+    /// created when the new email address was proposed.
+    ///
+    /// ### Arguments
+    /// - `players`: The Player repository
+    /// - `conf_tokens`: The Confirmation Token repository
+    /// - `undo_tokens`: The Undo Token repository
+    /// - `player_id`: The player's unique identifier
+    /// - `token_id`: The confirmation token's unique identifier
+    ///
+    /// ### Errors
+    /// - `MissingDocument` if the player or the confirmation token cannot be found
+    /// - `TokenExpired` if the confirmation token is expired
+    /// - `RelationalConflict` if the token does not match the player
+    /// - `InternalConflict` if the player does not have a proposed email address
+    /// - `InvalidPlayerInfo` if the proposed email address cannot be validated
+    /// - `UniquenessViolation` if the proposed email address is not unique
+    /// - `AdapterError` if a database query fails
+    pub async fn confirm_proposed_email(
+        players: &Repository<Player>,
+        conf_tokens: &Repository<ConfirmationToken>,
+        undo_tokens: &Repository<UndoToken>,
+        player_id: &str,
+        token_id: &str,
+    ) -> DBoResult<()> {
+        let player = match players.find_by_id(player_id).await? {
+            Some(p) => p,
+            None => return Err(DBoError::missing_document(Player::collection_name())),
+        };
+
+        let token = match conf_tokens.find_by_id(token_id).await? {
+            Some(t) => t,
+            None => {
+                return Err(DBoError::missing_document(
+                    ConfirmationToken::collection_name(),
+                ));
+            }
+        };
+
+        if token.expired() {
+            return Err(DBoError::TokenExpired);
+        }
+
+        if token.player_id() != player.id() {
+            return Err(DBoError::RelationalConflict);
+        }
+
+        players.confirm_proposed_email(player.id()).await?;
+        conf_tokens.delete(token.id()).await?;
+        undo_tokens
+            .delete_by_player_and_func(player.id(), &UndoTokenType::Email)
+            .await?;
+
+        Ok(())
+    }
+
+    /// Change a player's password. Find the player using their access token. Ensure that the old
+    /// password is the same as is stored in the database. Update the player's password, ensuring
+    /// that it is valid and that it does not match their last 5 passwords - update their
+    /// "last_passwords" as well. Invalidate the player's access tokens by changing the
+    /// "session_valid_after" field. Create a new undo token and store it in the database. Send an
+    /// email to the player informing them of this change.
+    ///
+    /// ### Arguments
+    /// - `players`: The Player repository
+    /// - `tokens`: The Undo Token repository
+    /// - `jwt`: The player's access token
+    /// - `old_password`: The player's current password
+    /// - `new_password`: The player's new password to be set
+    ///
+    /// ### Errors
+    /// - `TokenExpired` if the access token is expired
+    /// - `TokenPremature` if the token was created before invalidating the player's sessions
+    /// - `InvalidToken` if the token cannot be decoded because it is bad
+    /// - `MissingDocument` if the player cannot be found
+    /// - `InvalidPlayerInfo` if the password is not valid
+    /// - `InternalConflict` if the new password matches any of the player's last five passwords
+    /// - `InvalidEmailAddress` if the player's email address cannot be parsed into a Mailbox
+    /// - `AdapterError` if a database query fails, or if the access token cannot be decoded due to
+    ///   a server-side error, or if any of the player's stored hashes cannot be decoded, or if the
+    ///   new password cannot be hashed, or if the email cannot be sent due to a server-side error.
+    pub async fn change_password(
+        players: &Repository<Player>,
+        tokens: &Repository<UndoToken>,
+        jwt: &str,
+        old_password: &str,
+        new_password: &str,
+    ) -> DBoResult<()> {
+        let player = players.find_by_token(jwt).await?;
+
+        if !verify_secret(old_password, player.password())? {
+            return Err(DBoError::AuthenticationFailure);
+        }
+
+        players.update_password(player.id(), new_password).await?;
+
+        let token = UndoToken::new(player.id(), &UndoTokenType::Password);
+        tokens.insert(&token).await?;
+
+        send_change_password_email(
+            player.email(),
+            player.username(),
+            player.id(),
+            token.id(),
+            player.preferred_language(),
+            player.pronoun(),
         )
         .await?;
 
