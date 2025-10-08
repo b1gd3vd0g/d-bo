@@ -20,7 +20,7 @@ use crate::{
     errors::DBoResult,
     models::{
         player_validation::validate_all,
-        submodels::{Gender, LanguagePreference, PlayerStats},
+        submodels::{Gender, LanguagePreference, PlayerStats, UndoTokenType},
     },
 };
 
@@ -368,6 +368,56 @@ impl Collectible for RefreshToken {
 }
 
 impl Identifiable for RefreshToken {
+    fn id(&self) -> &str {
+        &self.token_id
+    }
+
+    fn id_field() -> &'static str {
+        "token_id"
+    }
+}
+
+// UNDO TOKEN
+// //////////
+
+#[derive(Clone, Deserialize, Serialize)]
+pub struct UndoToken {
+    token_id: String,
+    player_id: String,
+    function: UndoTokenType,
+    created: DateTime,
+}
+
+impl UndoToken {
+    pub fn new(player_id: &str, function: &UndoTokenType) -> Self {
+        Self {
+            token_id: Uuid::new_v4().to_string(),
+            player_id: String::from(player_id),
+            function: function.clone(),
+            created: DateTime::now(),
+        }
+    }
+
+    pub fn player_id(&self) -> &str {
+        &self.player_id
+    }
+
+    pub fn function(&self) -> &UndoTokenType {
+        &self.function
+    }
+
+    pub fn expired(&self) -> bool {
+        Utc::now() - self.created.to_chrono() > Duration::seconds(60 * 60 * 24)
+    }
+}
+
+impl Collectible for UndoToken {
+    fn collection_name() -> &'static str {
+        "undo-tokens"
+    }
+}
+
+impl Identifiable for UndoToken {
     fn id(&self) -> &str {
         &self.token_id
     }

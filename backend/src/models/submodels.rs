@@ -59,3 +59,27 @@ impl PlayerStats {
         }
     }
 }
+
+// //////////////////// //
+// UNDO TOKEN SUBMODELS //
+// //////////////////// //
+
+/// The type of operation that an Undo Token can be used for
+#[derive(Clone, Deserialize, Serialize)]
+pub enum UndoTokenType {
+    /// The undo token is used to reset a password without further verification
+    #[serde(rename = "pw")]
+    Password,
+    /// The undo token is used to undo a pending email change
+    #[serde(rename = "em")]
+    Email,
+}
+
+impl ToString for UndoTokenType {
+    fn to_string(&self) -> String {
+        String::from(match self {
+            Self::Password => "pw",
+            Self::Email => "em",
+        })
+    }
+}
