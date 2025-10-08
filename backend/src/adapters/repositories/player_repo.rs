@@ -7,6 +7,7 @@ use mongodb::{bson::doc, options::ReturnDocument};
 use crate::{
     adapters::{
         hashing::{hash_secret, verify_secret},
+        jwt::decode_access_token,
         mongo::case_insensitive_collation,
         repositories::Repository,
     },
@@ -80,6 +81,33 @@ impl Repository<Player> {
             })
             .collation(case_insensitive_collation())
             .await?)
+    }
+
+    /// Find a player via a JWT access token.
+    ///
+    /// ### Arguments
+    /// - `jwt`: The JWT
+    ///
+    /// ### Errors
+    /// - `TokenExpired` if the JWT is expired
+    /// - `TokenPremature` if the JWT was made before player sessions were invalidated
+    /// - `InvalidToken` if the token is bad
+    /// - `MissingDocument` if the player cannot be found
+    /// - `AdapterError` if the database query fails, or if the token cannot be decoded due to a
+    ///   server-side error
+    pub async fn find_by_token(&self, jwt: &str) -> DBoResult<Player> {
+        let payload = decode_access_token(jwt)?;
+
+        let player = match self.find_by_id(payload.sub()).await? {
+            Some(p) => p,
+            None => return Err(DBoError::missing_document(Player::collection_name())),
+        };
+
+        if payload.made_before(&player.valid_after().to_chrono()) {
+            return Err(DBoError::TokenPremature);
+        }
+
+        Ok(player)
     }
 
     /// Insert a new player into the database.
@@ -157,11 +185,13 @@ impl Repository<Player> {
             Some(DateTime::from_chrono(Utc::now() + lockout_time))
         };
 
-        self
-            .collection
+        self.collection
             .find_one_and_update(
                 doc! { Player::id_field(): player_id },
-                doc! { "$set": { "failed_logins": failed_logins as i32, "locked_until": lockout_end }},
+                doc! { "$set": {
+                    "failed_logins": failed_logins as i32,
+                    "locked_until": lockout_end
+                } },
             )
             .return_document(ReturnDocument::After)
             .await?;
@@ -211,6 +241,19 @@ impl Repository<Player> {
         }
     }
 
+    /// Update a player's username in the database. Ensure that the new username is valid, and that
+    /// it is case-insensitively unique. Update the player's username, and invalidate their access
+    /// tokens by setting their "session_valid_after" field.
+    ///
+    /// ### Arguments
+    /// - `player_id`: The player's unique identifier
+    /// - `value`: The new email address
+    ///
+    /// ### Errors
+    /// - `InvalidPlayerInfo` if the username does not pass validation checks
+    /// - `UniquenessViolation` if the username is already taken
+    /// - `MissingDocument` if the player cannot be found
+    /// - `AdapterError` if any database query should fail
     pub async fn update_username(&self, player_id: &str, value: &str) -> DBoResult<()> {
         let probs = validate_username(value);
         if probs.is_some() {
@@ -242,6 +285,18 @@ impl Repository<Player> {
         }
     }
 
+    /// Update a player's proposed email address. Validate the new value and ensure that it is
+    /// case-insensitively unique. Update the "proposed_email" field in the player document.
+    ///
+    /// ### Arguments
+    /// - `player_id`: The player's unique identifier
+    /// - `value`: The new proposed email address
+    ///
+    /// ### Errors
+    /// - `InvalidPlayerInfo` if the email address cannot be validated
+    /// - `UniquenessViolation` if the email address is already in use
+    /// - `MissingDocument` if the player cannot be found
+    /// - `AdapterError` if any database query should fail
     pub async fn update_proposed_email(&self, player_id: &str, value: &str) -> DBoResult<()> {
         let probs = validate_email(value);
         if probs.is_some() {
@@ -250,9 +305,7 @@ impl Repository<Player> {
             )));
         }
 
-        let existing_player = self.find_by_email(value).await?;
-
-        if existing_player.is_some() {
+        if self.find_by_email(value).await?.is_some() {
             return Err(DBoError::UniquenessViolation(false, true));
         }
 
@@ -270,14 +323,42 @@ impl Repository<Player> {
         }
     }
 
+    /// Confirm a player's proposed email address. Find the player by id, and ensure that they have
+    /// a proposed email address. Validate that email address, and ensure that it is
+    /// case-insensitively unique. Update the players email to be their proposed email, and reset
+    /// their proposed email to None. Invalidate a player's access tokens by changing the
+    /// "session_valid_after" field.
+    ///
+    /// ### Arguments
+    /// - `player_id`: The player's unique identifier
+    ///
+    /// ### Errors
+    /// - `MissingDocument` if the player cannot be found
+    /// - `InternalConflict` if the player does not have a proposed email address
+    /// - `InvalidPlayerInfo` if the email address cannot be validated
+    /// - `UniquenessViolation` if the email address is already in use
+    /// - `AdapterError` if a database query should fail
     pub async fn confirm_proposed_email(&self, player_id: &str) -> DBoResult<()> {
         let player = match self.find_by_id(player_id).await? {
             Some(p) => p,
             None => return Err(DBoError::missing_document(Player::collection_name())),
         };
 
-        if player.proposed_email().is_none() {
-            return Err(DBoError::InternalConflict);
+        let proposed = match player.proposed_email() {
+            Some(p) => p,
+            None => return Err(DBoError::InternalConflict),
+        };
+
+        let probs = validate_email(proposed);
+
+        if probs.is_some() {
+            return Err(DBoError::InvalidPlayerInfo(InputValidationResponse::new(
+                None, None, probs,
+            )));
+        }
+
+        if self.find_by_email(&proposed).await?.is_some() {
+            return Err(DBoError::UniquenessViolation(false, true));
         }
 
         let update = self
@@ -298,6 +379,23 @@ impl Repository<Player> {
         }
     }
 
+    /// Update a player's current password. Ensure that the password is valid. Find the player by
+    /// their id. Ensure that the new password does not match any of their last five passwords. Push
+    /// all their last passwords back in the array, freeing up the last one again; replace the 0
+    /// index with their current password. Hash their new password. Update their "password" field to
+    /// the hash. Invalidate the player's access tokens by changing their "session_valid_after"
+    /// field.
+    ///
+    /// ### Arguments
+    /// - `player_id`: The player's unique identifier
+    /// - `value`: The new password to save.
+    ///
+    /// ### Errors
+    /// - `InvalidPlayerInfo` if the password is invalid.
+    /// - `MissingDocument` if the player cannot be found.
+    /// - `InternalConflict` if the new password matches any of the last five used.
+    /// - `AdapterError` if any database query should fail, or if any of their previous password
+    ///   hashes cannot be parsed, or if their current password cannot be hashed.
     pub async fn update_password(&self, player_id: &str, value: &str) -> DBoResult<()> {
         let probs = validate_password(value);
         if probs.is_some() {
