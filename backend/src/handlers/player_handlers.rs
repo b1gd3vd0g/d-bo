@@ -17,7 +17,9 @@ use crate::{
     errors::DBoError,
     handlers::{
         request_bodies::{
-            PasswordRequestBody, PlayerLoginRequestBody, PlayerRegistrationRequestBody,
+            PasswordChangeRequestBody, PasswordRequestBody, PlayerLoginRequestBody,
+            PlayerRegistrationRequestBody, ProposedEmailChangeRequestBody,
+            UsernameChangeRequestBody,
         },
         responses::{
             AccessTokenResponse, AccountLockedResponse, ExistingFieldViolationResponse,
@@ -315,6 +317,109 @@ pub async fn handle_player_deletion(
         Ok(()) => (StatusCode::NO_CONTENT).into_response(),
         Err(e) => match e {
             _ => unexpected_error(e, "player deletion"),
+        },
+    }
+}
+
+pub async fn handle_player_username_change(
+    State(repos): State<Repositories>,
+    headers: HeaderMap,
+    Json(body): Json<UsernameChangeRequestBody>,
+) -> Response {
+    let token = match extract_access_token(headers) {
+        Some(t) => t,
+        None => return (StatusCode::BAD_REQUEST).into_response(),
+    };
+
+    let outcome = PlayerService::change_username(
+        repos.players(),
+        repos.refresh_tokens(),
+        &token,
+        &body.password,
+        &body.new_username,
+    )
+    .await;
+
+    match outcome {
+        Ok(()) => (StatusCode::NO_CONTENT).into_response(),
+        Err(e) => match e {
+            _ => unexpected_error(e, "username change"),
+        },
+    }
+}
+
+pub async fn handle_player_password_change(
+    State(repos): State<Repositories>,
+    headers: HeaderMap,
+    Json(body): Json<PasswordChangeRequestBody>,
+) -> Response {
+    let token = match extract_access_token(headers) {
+        Some(t) => t,
+        None => return (StatusCode::BAD_REQUEST).into_response(),
+    };
+
+    let outcome = PlayerService::change_password(
+        repos.players(),
+        repos.undo_tokens(),
+        &token,
+        &body.old_password,
+        &body.new_password,
+    )
+    .await;
+
+    match outcome {
+        Ok(()) => (StatusCode::NO_CONTENT).into_response(),
+        Err(e) => match e {
+            _ => unexpected_error(e, "change password"),
+        },
+    }
+}
+
+pub async fn handle_player_proposed_email_change(
+    State(repos): State<Repositories>,
+    headers: HeaderMap,
+    Json(body): Json<ProposedEmailChangeRequestBody>,
+) -> Response {
+    let token = match extract_access_token(headers) {
+        Some(t) => t,
+        None => return (StatusCode::BAD_REQUEST).into_response(),
+    };
+
+    let outcome = PlayerService::change_proposed_email(
+        repos.players(),
+        repos.confirmation_tokens(),
+        repos.undo_tokens(),
+        &token,
+        &body.password,
+        &body.new_email,
+    )
+    .await;
+
+    match outcome {
+        Ok(()) => (StatusCode::NO_CONTENT).into_response(),
+        Err(e) => match e {
+            _ => unexpected_error(e, "change proposed email"),
+        },
+    }
+}
+
+pub async fn handle_player_proposed_email_confirmation(
+    State(repos): State<Repositories>,
+    Path((player_id, token_id)): Path<(String, String)>,
+) -> Response {
+    let outcome = PlayerService::confirm_proposed_email(
+        repos.players(),
+        repos.confirmation_tokens(),
+        repos.undo_tokens(),
+        &player_id,
+        &token_id,
+    )
+    .await;
+
+    match outcome {
+        Ok(()) => (StatusCode::NO_CONTENT).into_response(),
+        Err(e) => match e {
+            _ => unexpected_error(e, "proposed email confirmation"),
         },
     }
 }
