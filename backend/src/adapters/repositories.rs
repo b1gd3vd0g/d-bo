@@ -17,13 +17,15 @@ mod counters_repo;
 mod player_repo;
 #[doc(hidden)]
 mod refresh_token_repo;
+#[doc(hidden)]
+mod undo_token_repo;
 
 use mongodb::{Collection, bson::doc};
 
 use crate::{
     adapters::mongo::database,
     errors::DBoResult,
-    models::{Collectible, ConfirmationToken, Counter, Model, Player, RefreshToken},
+    models::{Collectible, ConfirmationToken, Counter, Model, Player, RefreshToken, UndoToken},
 };
 
 /// An interface over a database collection which handles all database interactions related to a
@@ -82,7 +84,10 @@ pub struct Repositories {
     counters: Repository<Counter>,
     /// The repository handling player accounts.
     players: Repository<Player>,
+    /// The repository handling player refresh tokens.
     refresh_tokens: Repository<RefreshToken>,
+    /// The repository handling player undo tokens.
+    undo_tokens: Repository<UndoToken>,
 }
 
 impl Repositories {
@@ -99,6 +104,9 @@ impl Repositories {
             counters: Repository::<Counter>::new(db.collection(&Counter::collection_name())),
             players: Repository::<Player>::new(db.collection(&Player::collection_name())),
             refresh_tokens: Repository::<RefreshToken>::new(
+                db.collection(RefreshToken::collection_name()),
+            ),
+            undo_tokens: Repository::<UndoToken>::new(
                 db.collection(RefreshToken::collection_name()),
             ),
         }
