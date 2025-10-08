@@ -109,10 +109,8 @@ impl Repositories {
                 db.collection(RefreshToken::collection_name()),
             )
             .await,
-            undo_tokens: Repository::<UndoToken>::new(
-                db.collection(RefreshToken::collection_name()),
-            )
-            .await,
+            undo_tokens: Repository::<UndoToken>::new(db.collection(UndoToken::collection_name()))
+                .await,
         }
     }
 
