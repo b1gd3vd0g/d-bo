@@ -41,7 +41,8 @@ impl<T: Model + Send + Sync> Repository<T> {
     ///
     /// ### Arguments
     /// - `collection`: The MongoDB collection that this Repository will handle.
-    pub fn new(collection: Collection<T>) -> Self {
+    pub async fn new(collection: Collection<T>) -> Self {
+        T::index(&collection).await;
         Self {
             collection: collection,
         }
@@ -100,15 +101,18 @@ impl Repositories {
         Self {
             confirmation_tokens: Repository::<ConfirmationToken>::new(
                 db.collection(ConfirmationToken::collection_name()),
-            ),
-            counters: Repository::<Counter>::new(db.collection(&Counter::collection_name())),
-            players: Repository::<Player>::new(db.collection(&Player::collection_name())),
+            )
+            .await,
+            counters: Repository::<Counter>::new(db.collection(&Counter::collection_name())).await,
+            players: Repository::<Player>::new(db.collection(&Player::collection_name())).await,
             refresh_tokens: Repository::<RefreshToken>::new(
                 db.collection(RefreshToken::collection_name()),
-            ),
+            )
+            .await,
             undo_tokens: Repository::<UndoToken>::new(
                 db.collection(RefreshToken::collection_name()),
-            ),
+            )
+            .await,
         }
     }
 
