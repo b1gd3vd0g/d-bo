@@ -56,3 +56,21 @@ pub struct PlayerLoginRequestBody {
 pub struct PasswordRequestBody {
     pub password: String,
 }
+
+#[derive(Deserialize)]
+pub struct UsernameChangeRequestBody {
+    pub new_username: String,
+    pub password: String,
+}
+
+#[derive(Deserialize)]
+pub struct PasswordChangeRequestBody {
+    pub old_password: String,
+    pub new_password: String,
+}
+
+#[derive(Deserialize)]
+pub struct ProposedEmailChangeRequestBody {
+    pub new_email: String,
+    pub password: String,
+}
