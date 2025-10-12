@@ -9,7 +9,7 @@ use regex::Regex;
 
 use crate::{
     errors::{DBoError, DBoResult},
-    handlers::responses::InputValidationResponse,
+    handlers::responses::PlayerInvalidFieldsResponse,
 };
 
 /// Check a string to make sure that it could be a valid username.
@@ -250,11 +250,9 @@ pub fn validate_all(username: &str, password: &str, email: &str) -> DBoResult<()
     if username_problems.is_none() && password_problems.is_none() && email_problems.is_none() {
         Ok(())
     } else {
-        Err(DBoError::InvalidPlayerInfo(InputValidationResponse::new(
-            username_problems,
-            password_problems,
-            email_problems,
-        )))
+        Err(DBoError::InvalidPlayerInfo(
+            PlayerInvalidFieldsResponse::new(username_problems, password_problems, email_problems),
+        ))
     }
 }
 

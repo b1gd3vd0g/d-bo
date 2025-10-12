@@ -22,8 +22,8 @@ use crate::{
             UsernameChangeRequestBody,
         },
         responses::{
-            AccessTokenResponse, AccountLockedResponse, ExistingFieldViolationResponse,
-            MissingDocumentResponse,
+            AccessTokenResponse, AccountLockedResponse, MissingDocumentResponse,
+            PlayerUniquenessViolationResponse,
         },
     },
     services::player_service::PlayerService,
@@ -119,7 +119,7 @@ pub async fn handle_player_registration(
             }
             DBoError::UniquenessViolation(username, email) => (
                 StatusCode::CONFLICT,
-                Json(ExistingFieldViolationResponse::new(username, email)),
+                Json(PlayerUniquenessViolationResponse::new(username, email)),
             )
                 .into_response(),
             DBoError::AdapterError | DBoError::InvalidEmailAddress => {

@@ -8,26 +8,34 @@ use crate::models::{
     submodels::{Gender, LanguagePreference, PlayerStats},
 };
 
-/// Returned when registration fails due to user input not being **case-insensitively unique**
-/// within the database.
+/// Returned when a player account cannot be created or modified, due to its fields violating a
+/// uniqueness requirement.
 #[derive(Serialize)]
-pub struct ExistingFieldViolationResponse {
-    /// Indicates whether the username already exists.
-    username: bool,
-    /// Indicates whether the email already exists.
-    email: bool,
+pub struct PlayerUniquenessViolationResponse {
+    /// The fields which violated uniqueness requirements. Its values may only be "username" and
+    /// "email".
+    uniqueness_violations: Vec<String>,
 }
 
-impl ExistingFieldViolationResponse {
-    /// Construct a new ExistingFieldViolationResponse
+impl PlayerUniquenessViolationResponse {
+    /// Construct a new PlayerUniquenessViolationResponse struct.
     ///
     /// ### Arguments
-    /// - `username`: Does the username already exist?
-    /// - `email`: Does the email already exist?
+    /// - `username`: Is the username already taken?
+    /// - `email`: Is the email address already taken?
     pub fn new(username: bool, email: bool) -> Self {
+        let mut uniqueness_violations = vec![];
+
+        if username {
+            uniqueness_violations.push(String::from("username"));
+        }
+
+        if email {
+            uniqueness_violations.push(String::from("email"));
+        }
+
         Self {
-            username: username,
-            email: email,
+            uniqueness_violations,
         }
     }
 }
@@ -38,34 +46,34 @@ impl ExistingFieldViolationResponse {
 /// user provides bad input. However, it will only include the fields which **failed validation**
 /// within that serialized version.
 #[derive(Debug, Serialize)]
-pub struct InputValidationResponse {
+pub struct PlayerInvalidFieldsResponse {
     /// A list of problems with the username.
     #[serde(skip_serializing_if = "core::option::Option::is_none")]
-    username: Option<Vec<String>>,
+    username_problems: Option<Vec<String>>,
     /// A list of problems with the password.
     #[serde(skip_serializing_if = "core::option::Option::is_none")]
-    password: Option<Vec<String>>,
+    password_problems: Option<Vec<String>>,
     /// A list of problems with the email.
     #[serde(skip_serializing_if = "core::option::Option::is_none")]
-    email: Option<Vec<String>>,
+    email_problems: Option<Vec<String>>,
 }
 
-impl InputValidationResponse {
-    /// Construct a new InputValidationResponse
+impl PlayerInvalidFieldsResponse {
+    /// Construct a new PlayerInvalidFieldsResponse
     ///
     /// ### Arguments
-    /// - `username`: A list of problems with the username
-    /// - `password`: A list of problems with the password
-    /// - `email`: A list of problems with the email
+    /// - `username_problems`: A list of problems with the username
+    /// - `password_problems`: A list of problems with the password
+    /// - `email_problems`: A list of problems with the email
     pub fn new(
-        username: Option<Vec<String>>,
-        password: Option<Vec<String>>,
-        email: Option<Vec<String>>,
+        username_problems: Option<Vec<String>>,
+        password_problems: Option<Vec<String>>,
+        email_problems: Option<Vec<String>>,
     ) -> Self {
         Self {
-            username: username,
-            password: password,
-            email: email,
+            username_problems,
+            password_problems,
+            email_problems,
         }
     }
 }
@@ -111,12 +119,18 @@ impl SafePlayerResponse {
     }
 }
 
+/// Return an Access Token to the player - a JWT that can be used to authenticate them for 15
+/// minutes.
 #[derive(Serialize)]
 pub struct AccessTokenResponse {
     access_token: String,
 }
 
 impl AccessTokenResponse {
+    /// Create a new AccessTokenResponse struct
+    ///
+    /// ### Arguments
+    /// - `access_token`: The access JWT
     pub fn new(access_token: &str) -> Self {
         Self {
             access_token: String::from(access_token),
@@ -132,6 +146,10 @@ pub struct MissingDocumentResponse {
 }
 
 impl MissingDocumentResponse {
+    /// Create a new MissingDocumentResponse
+    ///
+    /// ### Arguments
+    /// - `collection`: The collection from which the document is missing
     pub fn new(collection: &str) -> Self {
         Self {
             missing: String::from(collection),
@@ -139,7 +157,8 @@ impl MissingDocumentResponse {
     }
 }
 
-/// An error response indicating that the account is locked.
+/// An error response indicating that the account is locked - the player cannot log into their
+/// account until the time provided.
 #[derive(Serialize)]
 pub struct AccountLockedResponse {
     /// The UTC DateTime indicating when the account will become unlocked again, in RFC 3339
@@ -147,6 +166,10 @@ pub struct AccountLockedResponse {
 }
 
 impl AccountLockedResponse {
+    /// Create a new AccountLockedResponse
+    ///
+    /// ### Arguments
+    /// - `date`: The time at which the account will become unlocked again.
     pub fn new(date: DateTime<Utc>) -> Self {
         Self {
             locked_until: date.to_rfc3339(),

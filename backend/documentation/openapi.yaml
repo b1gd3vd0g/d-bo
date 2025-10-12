@@ -181,18 +181,17 @@ paths:
               schema:
                 type: object
                 properties:
-                  username:
-                    type: boolean
-                    description: true if the username already exists in the database.
-                  email:
-                    type: boolean
-                    description: true if the email already exists in the database.
-                required:
-                  - username
-                  - email
+                  uniqueness_violations:
+                    type: array
+                    items:
+                      type: string
+                      enum:
+                        - username
+                        - email
                 example:
-                  username: false 
-                  email: true
+                  uniqueness_violations:
+                    - username
+                    - email
         422:
           description: |
             The account could not be created because the request body could not be processed. It 

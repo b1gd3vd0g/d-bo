@@ -14,7 +14,7 @@ use jsonwebtoken::errors::{Error as JwtError, ErrorKind as JwtErrorKind};
 use lettre::{error::Error as LettreError, transport::smtp::Error as SmtpError};
 use mongodb::error::Error as MongoError;
 
-use crate::handlers::responses::InputValidationResponse;
+use crate::handlers::responses::PlayerInvalidFieldsResponse;
 
 /// Encompasses all possible errors that may occur within the D-Bo application.
 #[derive(Debug)]
@@ -33,7 +33,7 @@ pub enum DBoError {
     /// validation functions, but is not impossible.
     InvalidEmailAddress,
     /// A user has tried to create a new account with an invalid field.
-    InvalidPlayerInfo(InputValidationResponse),
+    InvalidPlayerInfo(PlayerInvalidFieldsResponse),
     /// A provided token is invalid.
     InvalidToken,
     /// A request has failed because a document cannot be found. The collection name is provided in

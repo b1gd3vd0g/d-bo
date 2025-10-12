@@ -12,7 +12,7 @@ use crate::{
         repositories::Repository,
     },
     errors::{DBoError, DBoResult},
-    handlers::responses::InputValidationResponse,
+    handlers::responses::PlayerInvalidFieldsResponse,
     models::{
         Collectible, Identifiable, Player,
         player_validation::{validate_email, validate_password, validate_username},
@@ -257,9 +257,9 @@ impl Repository<Player> {
     pub async fn update_username(&self, player_id: &str, value: &str) -> DBoResult<()> {
         let probs = validate_username(value);
         if probs.is_some() {
-            return Err(DBoError::InvalidPlayerInfo(InputValidationResponse::new(
-                probs, None, None,
-            )));
+            return Err(DBoError::InvalidPlayerInfo(
+                PlayerInvalidFieldsResponse::new(probs, None, None),
+            ));
         }
 
         let existing_player = self.find_by_username(value).await?;
@@ -300,9 +300,9 @@ impl Repository<Player> {
     pub async fn update_proposed_email(&self, player_id: &str, value: &str) -> DBoResult<()> {
         let probs = validate_email(value);
         if probs.is_some() {
-            return Err(DBoError::InvalidPlayerInfo(InputValidationResponse::new(
-                None, None, probs,
-            )));
+            return Err(DBoError::InvalidPlayerInfo(
+                PlayerInvalidFieldsResponse::new(None, None, probs),
+            ));
         }
 
         if self.find_by_email(value).await?.is_some() {
@@ -352,9 +352,9 @@ impl Repository<Player> {
         let probs = validate_email(proposed);
 
         if probs.is_some() {
-            return Err(DBoError::InvalidPlayerInfo(InputValidationResponse::new(
-                None, None, probs,
-            )));
+            return Err(DBoError::InvalidPlayerInfo(
+                PlayerInvalidFieldsResponse::new(None, None, probs),
+            ));
         }
 
         if self.find_by_email(&proposed).await?.is_some() {
@@ -399,9 +399,9 @@ impl Repository<Player> {
     pub async fn update_password(&self, player_id: &str, value: &str) -> DBoResult<()> {
         let probs = validate_password(value);
         if probs.is_some() {
-            return Err(DBoError::InvalidPlayerInfo(InputValidationResponse::new(
-                None, probs, None,
-            )));
+            return Err(DBoError::InvalidPlayerInfo(
+                PlayerInvalidFieldsResponse::new(None, probs, None),
+            ));
         }
 
         let player = match self.find_by_id(player_id).await? {
