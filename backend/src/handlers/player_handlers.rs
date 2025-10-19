@@ -23,7 +23,7 @@ use crate::{
         },
         responses::{
             AccessTokenResponse, AccountLockedResponse, MissingDocumentResponse,
-            PlayerUniquenessViolationResponse,
+            PlayerUniquenessViolationResponse, SimpleMessageResponse,
         },
     },
     services::player_service::PlayerService,
@@ -108,6 +108,7 @@ pub async fn handle_player_registration(
         body.gender(),
         body.preferred_language(),
         body.pronoun(),
+        body.time_zone(),
     )
     .await;
 
@@ -117,6 +118,13 @@ pub async fn handle_player_registration(
             DBoError::InvalidPlayerInfo(info) => {
                 (StatusCode::BAD_REQUEST, Json(info)).into_response()
             }
+            DBoError::TimeZoneParseError => (
+                StatusCode::BAD_REQUEST,
+                Json(SimpleMessageResponse::new(
+                    "The provided time_zone could not be parsed!",
+                )),
+            )
+                .into_response(),
             DBoError::UniquenessViolation(username, email) => (
                 StatusCode::CONFLICT,
                 Json(PlayerUniquenessViolationResponse::new(username, email)),

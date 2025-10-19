@@ -12,6 +12,7 @@ use std::{array, time::Duration as StdDuration};
 
 use bson::{DateTime, doc};
 use chrono::{Duration as ChronoDuration, Utc};
+use chrono_tz::Tz;
 use mongodb::{Collection, IndexModel, options::IndexOptions};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -103,6 +104,9 @@ pub struct Player {
     locked_until: Option<DateTime>,
     /// Any access JWTs or Refresh Tokens created *before* this date will be considered invalid.
     session_valid_after: DateTime,
+    /// The Time Zone identifier string (i.e. "America/Los_Angeles") for the player's preferred time
+    /// zone.
+    time_zone: String,
 }
 
 impl Player {
@@ -115,9 +119,12 @@ impl Player {
     /// - `gender`: The player's preferred gender
     /// - `preferred_language`: The player's preferred language
     /// - `pronoun`: The player's preferred pronouns
+    /// - `time_zone`: The player's preferred time zone identifier string (i.e.
+    ///   "America/Los_Angeles")
     ///
     /// ### Errors
-    /// - `InvalidPlayerInput` if the input does not pass validation
+    /// - `InvalidPlayerInput` if the `username`, `password`, or `email` do not pass validation
+    /// - `TimeZoneParseError` if the `time_zone` cannot be parsed
     /// - `AdapterError` if password hashing fails
     pub fn new(
         username: &str,
@@ -126,8 +133,11 @@ impl Player {
         gender: &Gender,
         preferred_language: &LanguagePreference,
         pronoun: &Gender,
+        time_zone: &str,
     ) -> DBoResult<Self> {
         validate_all(username, password, email)?;
+
+        let _tz: Tz = time_zone.parse()?;
 
         let now = DateTime::now();
 
@@ -148,6 +158,7 @@ impl Player {
             failed_logins: 0,
             locked_until: None,
             session_valid_after: now,
+            time_zone: String::from(time_zone),
         })
     }
 
@@ -213,6 +224,10 @@ impl Player {
 
     pub fn proposed_email(&self) -> &Option<String> {
         &self.proposed_email
+    }
+
+    pub fn time_zone(&self) -> &str {
+        &self.time_zone
     }
 }
 

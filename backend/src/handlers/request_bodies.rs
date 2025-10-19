@@ -18,6 +18,8 @@ pub struct PlayerRegistrationRequestBody {
     preferred_language: LanguagePreference,
     /// The player's chosen pronouns
     pronoun: Option<Gender>,
+    /// The player's initial time zone identifier string (i.e. "America/Los_Angeles")
+    time_zone: String,
 }
 
 impl PlayerRegistrationRequestBody {
@@ -43,6 +45,10 @@ impl PlayerRegistrationRequestBody {
 
     pub fn pronoun(&self) -> &Option<Gender> {
         &self.pronoun
+    }
+
+    pub fn time_zone(&self) -> &str {
+        &self.time_zone
     }
 }
 

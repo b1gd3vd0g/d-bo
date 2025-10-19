@@ -46,8 +46,9 @@ impl PlayerService {
     /// ### Errors
     /// - `InvalidPlayerInfo` if the username, password, or email cannot pass validation.
     /// - `UniquenessViolation` if the username or email are not case-insensitively unique.
-    /// - `ServerSideError` if the email templates cannot be found.
+    /// - `TimeZoneParseError` if the `time_zone` cannot be parsed
     /// - `InvalidEmailAddress` if the user's email address could not be parsed into a Mailbox
+    ///   (after already passing validation checks - this is not likely)
     /// - `AdapterError` if a database query fails, if the password cannot be hashed, or if the
     ///   confirmation email could not be sent
     pub async fn register_player(
@@ -60,6 +61,7 @@ impl PlayerService {
         gender: &Gender,
         preferred_language: &LanguagePreference,
         pronoun: &Option<Gender>,
+        time_zone: &str,
     ) -> DBoResult<SafePlayerResponse> {
         // TODO: Implement time zones into the registration process. The request should provide a
         // valid time zone string (like "America/Los_Angeles"), validate that it can be parsed into
@@ -79,6 +81,7 @@ impl PlayerService {
             gender,
             preferred_language,
             assumed_pronoun,
+            time_zone,
         )?;
         players.insert(&player).await?;
 

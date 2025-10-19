@@ -176,3 +176,21 @@ impl AccountLockedResponse {
         }
     }
 }
+
+/// A simple, versatile response to send to a client when an error has occurred, and a
+/// user-friendly message is passed describing the error. This message should **never** include
+/// internal code details - it is likely that this message will be displayed **as-is** to the player
+/// on the user interface.
+#[derive(Serialize)]
+pub struct SimpleMessageResponse {
+    /// The message, describing what went wrong.
+    message: String,
+}
+
+impl SimpleMessageResponse {
+    pub fn new(message: &str) -> Self {
+        Self {
+            message: String::from(message),
+        }
+    }
+}
