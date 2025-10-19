@@ -69,7 +69,7 @@ As mentioned in step 4 of **Ensure Existing Code Quality**, some codebase docume
 ## 19 October 2025
 
 - `[X]` Implement Time Zones in the player registration function, so that all new documents created include a time zone.
-- `[ ]` Fix the `PlayerService::login(..)`, `send_lockout_email(..)`, and `format_date_time(..)` functions to work as desired.
+- `[X]` Fix the `PlayerService::login(..)`, `send_lockout_email(..)`, and `format_date_time(..)` functions to work as desired.
 - `[ ]` Unit test the `format_date_time(..)` function thoroughly. Include:
   - `[ ]` Tests in English for several dates, including several months, and both AM and PM hours
   - `[ ]` Tests in Spanish for several dates, including several months, both AM and PM hours, ensuring to test that 1:00 AM says "a la" instead of "a las".

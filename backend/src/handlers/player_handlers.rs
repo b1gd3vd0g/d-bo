@@ -228,9 +228,9 @@ pub async fn handle_player_login(
                 Json(AccountLockedResponse::new(time)),
             )
                 .into_response(),
-            DBoError::AdapterError | DBoError::InvalidEmailAddress => {
-                (StatusCode::INTERNAL_SERVER_ERROR).into_response()
-            }
+            DBoError::AdapterError
+            | DBoError::InvalidEmailAddress
+            | DBoError::TimeZoneParseError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
             _ => unexpected_error(e, "player login"),
         },
     }

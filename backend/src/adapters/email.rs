@@ -126,7 +126,6 @@ pub fn format_date_time(
     language: &LanguagePreference,
     time_zone_str: &str,
 ) -> DBoResult<String> {
-    // TODO: Finish this function, and test it with multiple values, in English and Spanish.
     let tz: Tz = time_zone_str.parse()?;
 
     let local = utc_time.with_timezone(&tz);
@@ -326,6 +325,7 @@ pub async fn send_registration_email(
 ///
 /// ### Errors
 /// - `InvalidEmailAddress` if the player_email cannot be parsed into a Mailbox.
+/// - `TimeZoneParseError` if the time zone string cannot be parsed.
 /// - `AdapterError` if the message cannot be constructed or sent.
 pub async fn send_lockout_email(
     player_email: &str,

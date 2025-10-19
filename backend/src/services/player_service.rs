@@ -63,9 +63,6 @@ impl PlayerService {
         pronoun: &Option<Gender>,
         time_zone: &str,
     ) -> DBoResult<SafePlayerResponse> {
-        // TODO: Implement time zones into the registration process. The request should provide a
-        // valid time zone string (like "America/Los_Angeles"), validate that it can be parsed into
-        // a `chrono_tz::Tz`, and store that string as its value.
         let assumed_pronoun = match (gender, preferred_language) {
             (Gender::Other, LanguagePreference::Spanish) => match pronoun {
                 Some(p) => p,
@@ -251,6 +248,9 @@ impl PlayerService {
     ///   midway through this request and cannot be found when trying to update it.
     /// - `InvalidEmailAddress` if the lockout email cannot be sent because the player's stored
     ///   email address cannot be parsed into a mailbox.
+    /// - `TimeZoneParseError` in the case that a player's stored time zone cannot be parsed. This
+    ///   would indicate data corruption! Also, if this happens, it means that this request has
+    ///   resulted in a lockout (although that information will not be passed along to the client)
     /// - `AdapterError` if a database query fails, if the password or refresh token
     ///   secret cannot be hashed, if the access JWT cannot be created, or if the lockout email
     ///   fails to be sent.
@@ -290,8 +290,7 @@ impl PlayerService {
                     player.username(),
                     player.failed_logins() + 1,
                     &time.to_chrono(),
-                    // TODO: replace this value with a getter from the Player model once implemented
-                    "America/Los_Angeles",
+                    player.time_zone(),
                     player.preferred_language(),
                 )
                 .await?;
