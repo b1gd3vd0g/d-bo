@@ -1,6 +1,8 @@
 //! This module is an adapter over the `lettre` crate, allowing for the sending of various types of
 //! emails necessary within the application.
 
+use chrono::{DateTime, Datelike, Timelike, Utc, Weekday};
+use chrono_tz::Tz;
 use lettre::{
     AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
     message::{Attachment, Mailbox, MultiPart, SinglePart, header::ContentType},
@@ -117,6 +119,47 @@ fn fill_gendered_template(template: &str, gender: &Gender) -> String {
             Gender::Other => captures[3].to_string(),
         })
         .to_string()
+}
+
+pub fn format_date_time(
+    utc_time: &DateTime<Utc>,
+    language: &LanguagePreference,
+    time_zone_str: &str,
+) -> DBoResult<String> {
+    // TODO: Finish this function, and test it with multiple values, in English and Spanish.
+    let tz: Tz = time_zone_str.parse()?;
+
+    let local = utc_time.with_timezone(&tz);
+
+    let weekday = match (language, local.weekday()) {
+        (LanguagePreference::English, Weekday::Sun) => "Sunday",
+        (LanguagePreference::English, Weekday::Mon) => "Monday",
+        (LanguagePreference::English, Weekday::Tue) => "Tuesday",
+        (LanguagePreference::English, Weekday::Wed) => "Wednesday",
+        (LanguagePreference::English, Weekday::Thu) => "Thursday",
+        (LanguagePreference::English, Weekday::Fri) => "Friday",
+        (LanguagePreference::English, Weekday::Sat) => "Saturday",
+
+        (LanguagePreference::Spanish, Weekday::Sun) => "Domingo",
+        (LanguagePreference::Spanish, Weekday::Mon) => "Lunes",
+        (LanguagePreference::Spanish, Weekday::Tue) => "Martes",
+        (LanguagePreference::Spanish, Weekday::Wed) => "Miércoles",
+        (LanguagePreference::Spanish, Weekday::Thu) => "Jueves",
+        (LanguagePreference::Spanish, Weekday::Fri) => "Viernes",
+        (LanguagePreference::Spanish, Weekday::Sat) => "Sábado",
+    };
+
+    let formatter = match language {
+        LanguagePreference::English => "%m/%d/%Y at %I:%M:%S %P",
+        LanguagePreference::Spanish => match local.hour() == 1 {
+            false => "%d/%m/%Y a las %H:%M:%S",
+            true => "%d/%m/%Y a la %H:%M:%S",
+        },
+    };
+
+    let formatted_date_time = local.format(formatter).to_string();
+
+    Ok(format!("{}, {}", weekday, formatted_date_time))
 }
 
 /// Build a branded message from an email template. This function takes all information that may be
@@ -288,13 +331,17 @@ pub async fn send_lockout_email(
     player_email: &str,
     username: &str,
     failed_logins: u8,
-    end_lockout: &str,
+    end_lockout: &DateTime<Utc>,
+    time_zone_str: &str,
     language: &LanguagePreference,
 ) -> DBoResult<()> {
     let mut helpers = vec![
         PlaceholderHelper::username(username),
         PlaceholderHelper::new("{{FAILED_LOGINS}}", &format!("{}", failed_logins)),
-        PlaceholderHelper::new("{{END_LOCKOUT}}", end_lockout),
+        PlaceholderHelper::new(
+            "{{END_LOCKOUT}}",
+            &format_date_time(end_lockout, language, time_zone_str)?,
+        ),
     ];
 
     let message = build_branded_message(

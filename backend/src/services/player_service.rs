@@ -61,6 +61,9 @@ impl PlayerService {
         preferred_language: &LanguagePreference,
         pronoun: &Option<Gender>,
     ) -> DBoResult<SafePlayerResponse> {
+        // TODO: Implement time zones into the registration process. The request should provide a
+        // valid time zone string (like "America/Los_Angeles"), validate that it can be parsed into
+        // a `chrono_tz::Tz`, and store that string as its value.
         let assumed_pronoun = match (gender, preferred_language) {
             (Gender::Other, LanguagePreference::Spanish) => match pronoun {
                 Some(p) => p,
@@ -283,7 +286,9 @@ impl PlayerService {
                     player.email(),
                     player.username(),
                     player.failed_logins() + 1,
-                    &time.to_chrono().to_rfc3339(),
+                    &time.to_chrono(),
+                    // TODO: replace this value with a getter from the Player model once implemented
+                    "America/Los_Angeles",
                     player.preferred_language(),
                 )
                 .await?;
