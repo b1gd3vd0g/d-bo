@@ -10,6 +10,7 @@
 
 use argon2::password_hash::Error as HashingError;
 use chrono::{DateTime, Utc};
+use chrono_tz::ParseError as TzParseError;
 use jsonwebtoken::errors::{Error as JwtError, ErrorKind as JwtErrorKind};
 use lettre::{error::Error as LettreError, transport::smtp::Error as SmtpError};
 use mongodb::error::Error as MongoError;
@@ -41,6 +42,11 @@ pub enum DBoError {
     MissingDocument(String),
     /// An update to a document failed due to a conflicting state with a related document.
     RelationalConflict,
+    /// A time zone could not be parsed from a String! This can happen during registration, which
+    /// would indicate that we are making our requests badly; or it could happen whenever we are
+    /// sending an email with a timestamp to a player, indicating that we are storing bad values in
+    /// our database.
+    TimeZoneParseError,
     /// Some kind of token (be it an email confirmation token, JWT, etc.) is expired.
     TokenExpired,
     /// The token was created earlier than is allowed. This most likely happens when a player's
@@ -108,6 +114,15 @@ impl From<JwtError> for DBoError {
                 Self::AdapterError
             }
         }
+    }
+}
+
+impl From<TzParseError> for DBoError {
+    fn from(e: TzParseError) -> Self {
+        eprintln!("A Timezone Parsing Error has occurred!");
+        eprintln!("This likely indicates a problem with our database!");
+        eprintln!("{:?}", e);
+        Self::TimeZoneParseError
     }
 }
 
