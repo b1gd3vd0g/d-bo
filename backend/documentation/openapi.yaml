@@ -26,6 +26,7 @@ tags:
       These routes have to do with the creation, reading, updating, and deletion of player accounts.
   - name: Authentication
     description: These endpoints have to do with authenticating players.
+
 paths:
   /players:
     post:
@@ -125,12 +126,15 @@ paths:
                   $ref: '#/components/schemas/Language'
                 pronoun:
                   $ref: '#/components/schemas/Gender'
+                time_zone:
+                  $ref: '#/components/schemas/TimeZone'
               required:
                 - username
                 - password
                 - email
                 - gender
                 - preferred_language
+                - time_zone
       responses:
         200:
           description: The player account has been created successfully.
@@ -140,38 +144,32 @@ paths:
                 $ref: '#/components/schemas/PlayerInfo'
         400:
           description: |
-            The account could not be created, because one or more of the login credentials provided 
+            The account could not be created for one of two reasons: 
+            
+            1. Because one or more of the login credentials provided 
             do not meet the set requirements (i.e. password is too short; email address is missing 
-            an @ symbol).
+            an @ symbol).\
+            This will provide a response with at least one of the following fields: 
+            "username_problems", "password_problems", "email_problems", each of which contain an
+            array of Strings describing the problems with that field's input (as shown in the 
+            **InvalidPlayerInfo** example).
+            2. Because the provided **time_zone** could not be parsed by the system.\
+            This will provide a response with a "message" field indicating the problem (as shown in
+            the **TimeZoneParseMessage** example).
             
             This response could also occur because the request body was not proper JSON - in this
             case, a plaintext message will be returned describing the error.
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  username:
-                    type: array
-                    items: 
-                      type: string
-                  password:
-                    type: array
-                    items:
-                      type: string
-                  email:
-                    type: array
-                    items:
-                      type: string
-                example:
-                  username: 
-                    - Username cannot start with an underscore.
-                    - Username may not contain consecutive underscores.
-                  email:
-                    - Email prefix is empty!
-                    - Email domain includes illegal characters. Allowed characters are letters, numbers, and hyphens.
-                    - Email domain may not include consecutive dots.
-                    - Email top level domain must meet or exceed two characters.
+                oneOf:
+                  - $ref: '#/components/schemas/InvalidPlayerInfoResponse'
+                  - $ref: '#/components/schemas/SimpleMessageResponse'
+              examples:
+                InvalidPlayerInfo:
+                  $ref: '#/components/examples/BadUsernameAndEmail'
+                TimeZoneParseMessage:
+                  $ref: '#/components/examples/TimeZoneParseMessage'
         409:
           description:
             The account could not be created, because the username and/or email address provided 
@@ -504,6 +502,41 @@ paths:
           $ref: '#/components/responses/ServerSideError'
 
 components:
+  examples:
+    # Message Responses
+    TimeZoneParseMessage:
+      value:
+        message: The provided time_zone could not be parsed!
+    
+    # InvalidPlayerInfo Responses
+    BadUsernameAndEmail:
+      value:
+        username_problems: 
+          - Username cannot start with an underscore.
+          - Username may not contain consecutive underscores.
+        email_problems:
+          - Email prefix is empty!
+          - Email domain includes illegal characters. Allowed characters are letters, numbers, and hyphens.
+          - Email domain may not include consecutive dots.
+          - Email top level domain must meet or exceed two characters.
+    BadUsername:
+      value:
+        username_problems:
+          - Username cannot start with an underscore.
+          - Username may not contain consecutive underscores.
+    BadEmail:
+      value:
+        email_problems:
+          - Email prefix is empty!
+          - Email domain includes illegal characters. Allowed characters are letters, numbers, and hyphens.
+          - Email domain may not include consecutive dots.
+          - Email top level domain must meet or exceed two characters.
+    BadPassword:
+      value:
+        password_problems:
+          - "Password must include one of the following symbols: ! @ # $ % ^ & * + = ?"
+          - Password must be between 8 and 32 characters - found 6
+
   parameters: 
     PlayerId:
       in: path
@@ -540,6 +573,10 @@ components:
       enum:
         - en
         - es
+    
+    TimeZone:
+      type: string
+      example: America/Los_Angeles
 
     PlayerInfo:
       type: object
@@ -595,4 +632,28 @@ components:
         wins: 0
         losses: 0
         dropouts: 0
+    
+    SimpleMessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+    InvalidPlayerInfoResponse:
+      type: object
+      properties:
+        username_problems:
+          type: array
+          items: 
+            type: string
+        password_problems:
+          type: array
+          items:
+            type: string
+        email_problems:
+          type: array
+          items:
+            type: string
 
