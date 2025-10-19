@@ -286,6 +286,8 @@ paths:
         - $ref: '#/components/parameters/PlayerId'
         - $ref: '#/components/parameters/TokenId'
       responses:
+        # ERROR: The 409 response returned by this endpoint should be a 403 response; the 403
+        # response should probably be a 409.
         204:
           description: The account has been wiped successfully from our database.
         403:
@@ -313,6 +315,8 @@ paths:
         - $ref: '#/components/parameters/PlayerId'
         - $ref: '#/components/parameters/TokenId'
       responses:
+        # Error: The 409 response should be a 403 response; the 403 response should probably be a
+        # 409.
         204:
           description: The request was completed and the email was sent successfully.
         403:
