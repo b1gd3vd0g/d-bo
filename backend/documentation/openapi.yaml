@@ -21,7 +21,7 @@ servers:
     description: Local test server
 
 tags:
-  - name: Player Accounts
+  - name: Account Management
     description:
       These routes have to do with the creation, reading, updating, and deletion of player accounts.
   - name: Authentication
@@ -31,7 +31,7 @@ paths:
   /players:
     post:
       tags:
-        - Player Accounts
+        - Account Management
       summary: Create a new player account.
       description: |
         This endpoint is used when a player is registering a new account for D-Bo. A successful
@@ -136,7 +136,7 @@ paths:
                 - preferred_language
                 - time_zone
       responses:
-        200:
+        201:
           description: The player account has been created successfully.
           content:
             application/json:
@@ -200,16 +200,46 @@ paths:
             text/plain:
               schema:
                 type: string
-              example: 
-                "Failed to deserialize the JSON body into the target type: missing field `email` at 
-                line 4 column 1"
+                example: 
+                  "Failed to deserialize the JSON body into the target type: missing field `email` at 
+                  line 4 column 1"
+        500:
+          $ref: '#/components/responses/ServerSideError'
+    
+    delete:
+      tags:
+        - Account Management
+      summary: Delete a player's own account.
+      description: |
+        This endpoint allows a player to delete their own account. The player's identity is
+        validated by both an authentication token **and** their current password. If both of
+        these are valid, the account is wiped completely from the database, and the
+        "accounts-deleted" counter is incremented. 
+      parameters:
+        - $ref: '#/components/parameters/AuthnToken'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+                  example: "#P4s5w0rD!"
+              required:
+                - password
+      responses:
+        204:
+          description: The account has been deleted successfully.
+        401:
+          $ref: '#/components/responses/JwtAndPwAuthnFailure'
         500:
           $ref: '#/components/responses/ServerSideError'
 
   /players/{player_id}/confirm/{token_id}:
     post:
       tags:
-        - Player Accounts
+        - Account Management
       summary: Confirm a newly registered account.
       description: |
         This endpoint is used to verify a new player's email address. This marks the account as
@@ -262,7 +292,7 @@ paths:
 
     delete:
       tags: 
-        - Player Accounts
+        - Account Management
       summary: Reject a newly registered account.
       description: |
         This endpoint is used to **reject** an account registration. This would mostly be used in
@@ -284,23 +314,21 @@ paths:
         - $ref: '#/components/parameters/PlayerId'
         - $ref: '#/components/parameters/TokenId'
       responses:
-        # ERROR: The 409 response returned by this endpoint should be a 403 response; the 403
-        # response should probably be a 409.
         204:
           description: The account has been wiped successfully from our database.
         403:
-          description: The account has already been confirmed, and therefore cannot be deleted in 
-            this way.
+          description: The account could not be deleted because the token does not match the player. 
         404:
           description: The account could not be deleted because the token could not be found.
         409:
-          description: The account could not be deleted because the token does not match the player.
+          description: The account has already been confirmed, and therefore cannot be deleted in 
+            this way.
         500:
           $ref: '#/components/responses/ServerSideError'
   
     put:
       tags:
-        - Player Accounts
+        - Account Management
       summary: Resend the registration email with a fresh token
       description: |
         This endpoint is usually used after a player attempts to confirm their account, but finds
@@ -313,12 +341,10 @@ paths:
         - $ref: '#/components/parameters/PlayerId'
         - $ref: '#/components/parameters/TokenId'
       responses:
-        # Error: The 409 response should be a 403 response; the 403 response should probably be a
-        # 409.
         204:
           description: The request was completed and the email was sent successfully.
         403:
-          description: The request failed because the player account is already confirmed.
+          description: The request failed because the token does not match the player. 
         404:
           description: Either the player or the token could not be found
           content:
@@ -333,7 +359,7 @@ paths:
                       - players
                       - confirmation-tokens
         409:
-          description: The request failed because the token does not match the player.
+          description: The request failed because the player account is already confirmed.
         500:
           $ref: '#/components/responses/ServerSideError'
 
@@ -410,9 +436,7 @@ paths:
                 example: 
                   "Failed to parse the request body as JSON: trailing comma at line 4 column 1"
         401:
-          description: 
-            Authentication failed; the username/email and/or password did not match any existing
-            records in the database.
+          $ref: '#/components/responses/LoginAuthnFailure'
         403:
           description:
             The account is currently locked! Login functionality is blocked until the time presented
@@ -491,9 +515,7 @@ paths:
                     example: 
                       eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhMjljMDZhZS05MWM4LTQ4NDktYmM3MS05NmIwYmNlOTAzMDgiLCJleHAiOjE3NTczNzU0MjAsImlhdCI6MTc1NzM3NDUyMH0.2lQnOVkusYC0nfue8FbTQjFxM9fXojdTGEvG8djAAx4
         401:
-          description: The request failed because the cookie was not set, was formatted incorrectly, 
-            did not match the records in the database, or was not associated with an existing player
-            account.
+          $ref: '#/components/responses/RefreshAuthnFailure'
         403:
           description: The request failed because the token had been revoked.
         410:
@@ -538,6 +560,16 @@ components:
           - Password must be between 8 and 32 characters - found 6
 
   parameters: 
+    AuthnToken:
+      in: header
+      name: Authorization
+      required: true
+      schema:
+        type: string
+      description: 
+        The player authentication token, presented following the Bearer Authentication
+        guidelines.
+      example: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhMjljMDZhZS05MWM4LTQ4NDktYmM3MS05NmIwYmNlOTAzMDgiLCJleHAiOjE3NTczNzU0MjAsImlhdCI6MTc1NzM3NDUyMH0.2lQnOVkusYC0nfue8FbTQjFxM9fXojdTGEvG8djAAx4
     PlayerId:
       in: path
       name: player_id
@@ -557,10 +589,109 @@ components:
       example: 06d08b8c-c677-441f-9599-afd6f505c517
 
   responses:
+    # Authentication Failure Responses
+    LoginAuthnFailure:
+      description: Request failed because provided login credentials were incorrect. The only
+        possible return code for this request is **BLC** for **Bad Login Credentials**.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                $ref: '#/components/schemas/AuthnFailureCode'
+            required:
+              - code
+            example:
+              code: BLC
+    RefreshAuthnFailure:
+      description: | 
+        Request failed because the the cookie does not identify a valid refresh token.\
+        Possible failure codes include:
+        | Code | Reason                 |
+        | ---- | ---------------------- |
+        | CNS  | Cookie Not Set         |
+        | NPC  | Non-Parseable Cookie   |
+        | BCC  | Bad Cookie Credentials |
+        | ERT  | Expired Refresh Token  |
+        | PNF  | Player Not Found       |
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                $ref: '#/components/schemas/AuthnFailureCode'
+            required:
+              - code
+            example:
+              code: BCC
+    JwtAuthnFailure:
+      description: | 
+        Request failed because Bearer Authentication failed.\
+        Possible failure codes include:
+        | Code | Reason                         |
+        | ---- | ------------------------------ |
+        | MAT  | Missing Authentication Token   |
+        | BAT  | Bad Authentication Token       |
+        | EAT  | Expired Authentication Token   |
+        | PAT  | Premature Authentication Token |
+        | PNF  | Player Not Found               |
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                $ref: '#/components/schemas/AuthnFailureCode'
+            required:
+              - code
+            example:
+              code: EAT
+    JwtAndPwAuthnFailure:
+      description: | 
+        Request failed because Bearer Authentication failed OR because the provided
+        password was incorrect.\
+        Possible failure codes include:
+        | Code | Reason                         |
+        | ---- | ------------------------------ |
+        | MAT  | Missing Authentication Token   |
+        | BAT  | Bad Authentication Token       |
+        | EAT  | Expired Authentication Token   |
+        | PAT  | Premature Authentication Token |
+        | PNF  | Player Not Found               |
+        | BPW  | Bad Password                   |
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                $ref: '#/components/schemas/AuthnFailureCode'
+            required:
+              - code
+            example:
+              code: BPW
+
     ServerSideError:
       description: The request could not be completed due to a server-side error.
 
   schemas:
+    AuthnFailureCode:
+      type: string
+      enum:
+        - BLC
+        - MAT
+        - BAT
+        - EAT
+        - PAT 
+        - BPW 
+        - CNS
+        - NPC 
+        - BCC
+        - ERT
+        - PNF
+        
     Gender:
       type: string
       enum:
@@ -600,7 +731,7 @@ components:
       required:
         - player_id
         - username
-        - password
+        - email
         - created
         - gender
         - preferred_language
