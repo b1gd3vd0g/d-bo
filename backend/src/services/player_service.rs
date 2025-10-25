@@ -431,7 +431,9 @@ impl PlayerService {
         };
 
         if token.expired() {
-            return Err(DBoError::PersistentTokenExpired);
+            return Err(DBoError::AuthenticationFailure(
+                AuthnFailureReason::ExpiredRefreshToken,
+            ));
         }
 
         if token.revoked() {
