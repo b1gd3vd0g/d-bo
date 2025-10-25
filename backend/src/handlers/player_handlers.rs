@@ -1,5 +1,7 @@
 //! This module provides all HTTP handler functions related to player accounts.
 
+use std::f64::consts::E;
+
 use axum::{
     Json,
     extract::{Path, State},
@@ -355,6 +357,7 @@ pub async fn handle_player_deletion(
         Ok(()) => (StatusCode::NO_CONTENT).into_response(),
         Err(e) => match e {
             DBoError::AuthenticationFailure(reason) => authentication_failure_response(reason),
+            DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
             _ => unexpected_error(e, "player deletion"),
         },
     }
@@ -384,6 +387,18 @@ pub async fn handle_player_username_change(
     match outcome {
         Ok(()) => (StatusCode::NO_CONTENT).into_response(),
         Err(e) => match e {
+            DBoError::AuthenticationFailure(reason) => authentication_failure_response(reason),
+            DBoError::InvalidPlayerInfo(probs) => {
+                (StatusCode::BAD_REQUEST, Json(probs)).into_response()
+            }
+            DBoError::UniquenessViolation(u, e) => (
+                StatusCode::CONFLICT,
+                Json(PlayerUniquenessViolationResponse::new(u, e)),
+            )
+                .into_response(),
+            DBoError::InvalidEmailAddress | DBoError::AdapterError => {
+                (StatusCode::INTERNAL_SERVER_ERROR).into_response()
+            }
             _ => unexpected_error(e, "username change"),
         },
     }
@@ -413,6 +428,14 @@ pub async fn handle_player_password_change(
     match outcome {
         Ok(()) => (StatusCode::NO_CONTENT).into_response(),
         Err(e) => match e {
+            DBoError::AuthenticationFailure(reason) => authentication_failure_response(reason),
+            DBoError::InvalidPlayerInfo(probs) => {
+                (StatusCode::BAD_REQUEST, Json(probs)).into_response()
+            }
+            DBoError::InternalConflict => (StatusCode::CONFLICT).into_response(),
+            DBoError::InvalidEmailAddress | DBoError::AdapterError => {
+                (StatusCode::INTERNAL_SERVER_ERROR).into_response()
+            }
             _ => unexpected_error(e, "change password"),
         },
     }
@@ -443,6 +466,18 @@ pub async fn handle_player_proposed_email_change(
     match outcome {
         Ok(()) => (StatusCode::NO_CONTENT).into_response(),
         Err(e) => match e {
+            DBoError::AuthenticationFailure(reason) => authentication_failure_response(reason),
+            DBoError::InvalidPlayerInfo(probs) => {
+                (StatusCode::BAD_REQUEST, Json(probs)).into_response()
+            }
+            DBoError::UniquenessViolation(u, e) => (
+                StatusCode::CONFLICT,
+                Json(PlayerUniquenessViolationResponse::new(u, e)),
+            )
+                .into_response(),
+            DBoError::InvalidEmailAddress | DBoError::AdapterError => {
+                (StatusCode::INTERNAL_SERVER_ERROR).into_response()
+            }
             _ => unexpected_error(e, "change proposed email"),
         },
     }
@@ -464,6 +499,28 @@ pub async fn handle_player_proposed_email_confirmation(
     match outcome {
         Ok(()) => (StatusCode::NO_CONTENT).into_response(),
         Err(e) => match e {
+            DBoError::MissingDocument(collection) => (
+                StatusCode::NOT_FOUND,
+                Json(MissingDocumentResponse::new(&collection)),
+            )
+                .into_response(),
+            DBoError::PersistentTokenExpired => (StatusCode::GONE).into_response(),
+            DBoError::RelationalConflict => (StatusCode::FORBIDDEN).into_response(),
+            DBoError::InternalConflict => (
+                StatusCode::CONFLICT,
+                Json(SimpleMessageResponse::new(
+                    "Player does not have a proposed email address to confirm!",
+                )),
+            )
+                .into_response(),
+            DBoError::InvalidPlayerInfo(probs) => {
+                (StatusCode::BAD_REQUEST, Json(probs)).into_response()
+            }
+            DBoError::UniquenessViolation(u, e) => (
+                StatusCode::CONFLICT,
+                Json(PlayerUniquenessViolationResponse::new(u, e)),
+            )
+                .into_response(),
             _ => unexpected_error(e, "proposed email confirmation"),
         },
     }
