@@ -194,3 +194,16 @@ impl SimpleMessageResponse {
         }
     }
 }
+
+#[derive(Serialize)]
+pub struct AuthnFailureResponse {
+    code: String,
+}
+
+impl AuthnFailureResponse {
+    pub fn new(code: &str) -> Self {
+        Self {
+            code: String::from(code),
+        }
+    }
+}

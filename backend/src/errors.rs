@@ -17,6 +17,35 @@ use mongodb::error::Error as MongoError;
 
 use crate::handlers::responses::PlayerInvalidFieldsResponse;
 
+/// The reason why authentication failed for a certain request.
+#[derive(Debug)]
+pub enum AuthnFailureReason {
+    /// The login credentials (username/email and password) did not match our records.
+    BadLoginCredentials,
+    /// The authentication token was not provided (at least, not correctly).
+    MissingAuthenticationToken,
+    /// The authentication token could not be parsed.
+    BadAuthenticationToken,
+    /// The authentication token expired after 15 minutes.
+    ExpiredAuthenticationToken,
+    /// The authentication token was created *before* a player's sessions were invalidated.
+    PrematureAuthenticationToken,
+    /// The password did not match the player identified by the authentication JWT.
+    BadPassword,
+    /// The `refresh_token` cookie was not set.
+    CookieNotSet,
+    /// The `refresh_token` cookie's value could not be parsed into an **id** and a **secret**.
+    NonParseableCookie,
+    /// The **id** or **secret** provided in the cookie did not correspond with an existing refresh
+    /// token.
+    BadCookieCredentials,
+    /// The refresh token was expired.
+    ExpiredRefreshToken,
+    /// The player represented by the token (either an authentication JWT **or** a refresh token)
+    /// does not exist.
+    PlayerNotFound,
+}
+
 /// Encompasses all possible errors that may occur within the D-Bo application.
 #[derive(Debug)]
 pub enum DBoError {
@@ -25,7 +54,7 @@ pub enum DBoError {
     /// An error has occurred within an adapter function.
     AdapterError,
     /// The player could not be authenticated.
-    AuthenticationFailure,
+    AuthenticationFailure(AuthnFailureReason),
     /// An update to a document failed due to a conflicting state within that same document. The
     /// collection name is provided in the String.
     InternalConflict,
@@ -35,11 +64,12 @@ pub enum DBoError {
     InvalidEmailAddress,
     /// A user has tried to create a new account with an invalid field.
     InvalidPlayerInfo(PlayerInvalidFieldsResponse),
-    /// A provided token is invalid.
-    InvalidToken,
     /// A request has failed because a document cannot be found. The collection name is provided in
     /// the String.
     MissingDocument(String),
+    /// Some kind of *persistent* token (be it an email confirmation token, undo token, etc.) is
+    /// expired.
+    PersistentTokenExpired,
     /// An update to a document failed due to a conflicting state with a related document.
     RelationalConflict,
     /// A time zone could not be parsed from a String! This can happen during registration, which
@@ -47,12 +77,6 @@ pub enum DBoError {
     /// sending an email with a timestamp to a player, indicating that we are storing bad values in
     /// our database.
     TimeZoneParseError,
-    /// Some kind of token (be it an email confirmation token, JWT, etc.) is expired.
-    TokenExpired,
-    /// The token was created earlier than is allowed. This most likely happens when a player's
-    /// sessions have been invalidated, but a request was made using a JSON Web Token before that
-    /// invalidation took place.
-    TokenPremature,
     /// A user has tried to create a new account, but its unique fields are already in use.
     /// The first boolean represents a username violation, the second represents the email.
     UniquenessViolation(bool, bool),
@@ -97,16 +121,24 @@ impl From<LettreError> for DBoError {
 }
 
 impl From<JwtError> for DBoError {
+    /// ### Returns
+    /// - `AuthenticationFailure(ExpiredAuthenticationToken` if token is expired.
+    /// - `AuthenticationFailure(BadAuthenticationToken` if the token is invalid.
+    /// - `AdapterError` for any sort of server-side error.
     fn from(e: JwtError) -> Self {
         match e.kind() {
-            JwtErrorKind::ExpiredSignature => Self::TokenExpired,
+            JwtErrorKind::ExpiredSignature => {
+                Self::AuthenticationFailure(AuthnFailureReason::ExpiredAuthenticationToken)
+            }
 
             JwtErrorKind::InvalidToken
             | JwtErrorKind::InvalidSignature
             | JwtErrorKind::InvalidIssuer
             | JwtErrorKind::InvalidAudience
             | JwtErrorKind::InvalidSubject
-            | JwtErrorKind::InvalidAlgorithm => Self::InvalidToken,
+            | JwtErrorKind::InvalidAlgorithm => {
+                Self::AuthenticationFailure(AuthnFailureReason::BadAuthenticationToken)
+            }
 
             _ => {
                 eprintln!("An unexpected JWT error has occurred!");

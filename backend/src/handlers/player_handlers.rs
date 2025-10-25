@@ -14,7 +14,7 @@ use axum_extra::extract::{
 use crate::{
     adapters::repositories::Repositories,
     config::environment::ENV,
-    errors::DBoError,
+    errors::{AuthnFailureReason, DBoError},
     handlers::{
         request_bodies::{
             PasswordChangeRequestBody, PasswordRequestBody, PlayerLoginRequestBody,
@@ -22,8 +22,8 @@ use crate::{
             UsernameChangeRequestBody,
         },
         responses::{
-            AccessTokenResponse, AccountLockedResponse, MissingDocumentResponse,
-            PlayerUniquenessViolationResponse, SimpleMessageResponse,
+            AccessTokenResponse, AccountLockedResponse, AuthnFailureResponse,
+            MissingDocumentResponse, PlayerUniquenessViolationResponse, SimpleMessageResponse,
         },
     },
     services::player_service::PlayerService,
@@ -38,6 +38,28 @@ fn unexpected_error(error: DBoError, request_name: &str) -> Response {
     eprintln!("This should not happen!");
     eprintln!("{:?}", error);
     (StatusCode::INTERNAL_SERVER_ERROR).into_response()
+}
+
+fn authentication_failure_response(reason: AuthnFailureReason) -> Response {
+    let code = match reason {
+        AuthnFailureReason::BadLoginCredentials => "BLC",
+        AuthnFailureReason::MissingAuthenticationToken => "MAT",
+        AuthnFailureReason::BadAuthenticationToken => "BAT",
+        AuthnFailureReason::ExpiredAuthenticationToken => "EAT",
+        AuthnFailureReason::PrematureAuthenticationToken => "PAT",
+        AuthnFailureReason::BadPassword => "BPW",
+        AuthnFailureReason::CookieNotSet => "CNS",
+        AuthnFailureReason::NonParseableCookie => "NPC",
+        AuthnFailureReason::BadCookieCredentials => "BCC",
+        AuthnFailureReason::ExpiredRefreshToken => "ERT",
+        AuthnFailureReason::PlayerNotFound => "PNF",
+    };
+
+    (
+        StatusCode::UNAUTHORIZED,
+        Json(AuthnFailureResponse::new(code)),
+    )
+        .into_response()
 }
 
 fn build_refresh_token_header(id: &str, secret: &str) -> HeaderMap {
@@ -161,7 +183,7 @@ pub async fn handle_player_account_confirmation(
                 .into_response(),
             DBoError::InternalConflict => (StatusCode::CONFLICT).into_response(),
             DBoError::RelationalConflict => (StatusCode::FORBIDDEN).into_response(),
-            DBoError::TokenExpired => (StatusCode::GONE).into_response(),
+            DBoError::PersistentTokenExpired => (StatusCode::GONE).into_response(),
             DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
             _ => unexpected_error(e, "account confirmation"),
         },
@@ -184,54 +206,15 @@ pub async fn handle_player_account_rejection(
     match outcome {
         Ok(()) => (StatusCode::NO_CONTENT).into_response(),
         Err(e) => match e {
-            DBoError::InternalConflict => (StatusCode::FORBIDDEN).into_response(),
-            DBoError::MissingDocument(_) => (StatusCode::NOT_FOUND).into_response(),
-            DBoError::RelationalConflict => (StatusCode::CONFLICT).into_response(),
-            DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
-            _ => unexpected_error(e, "account rejection"),
-        },
-    }
-}
-
-pub async fn handle_player_login(
-    State(repos): State<Repositories>,
-    Json(body): Json<PlayerLoginRequestBody>,
-) -> Response {
-    let outcome = PlayerService::login(
-        repos.players(),
-        repos.refresh_tokens(),
-        repos.counters(),
-        &body.username_or_email,
-        &body.password,
-    )
-    .await;
-
-    match outcome {
-        Ok(info) => {
-            let headers =
-                build_refresh_token_header(&info.refresh_token_id, &info.refresh_token_secret);
-
-            (
-                StatusCode::OK,
-                headers,
-                Json(AccessTokenResponse::new(&info.access_token)),
-            )
-                .into_response()
-        }
-        Err(e) => match e {
-            DBoError::AuthenticationFailure | DBoError::MissingDocument(_) => {
-                (StatusCode::UNAUTHORIZED).into_response()
-            }
             DBoError::InternalConflict => (StatusCode::CONFLICT).into_response(),
-            DBoError::AccountLocked(time) => (
-                StatusCode::FORBIDDEN,
-                Json(AccountLockedResponse::new(time)),
+            DBoError::MissingDocument(_) => (
+                StatusCode::NOT_FOUND,
+                Json(MissingDocumentResponse::new("confirmation-tokens")),
             )
                 .into_response(),
-            DBoError::AdapterError
-            | DBoError::InvalidEmailAddress
-            | DBoError::TimeZoneParseError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
-            _ => unexpected_error(e, "player login"),
+            DBoError::RelationalConflict => (StatusCode::FORBIDDEN).into_response(),
+            DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
+            _ => unexpected_error(e, "account rejection"),
         },
     }
 }
@@ -266,13 +249,57 @@ pub async fn handle_resend_registration_email(
     }
 }
 
+pub async fn handle_player_login(
+    State(repos): State<Repositories>,
+    Json(body): Json<PlayerLoginRequestBody>,
+) -> Response {
+    let outcome = PlayerService::login(
+        repos.players(),
+        repos.refresh_tokens(),
+        repos.counters(),
+        &body.username_or_email,
+        &body.password,
+    )
+    .await;
+
+    match outcome {
+        Ok(info) => {
+            let headers =
+                build_refresh_token_header(&info.refresh_token_id, &info.refresh_token_secret);
+
+            (
+                StatusCode::OK,
+                headers,
+                Json(AccessTokenResponse::new(&info.access_token)),
+            )
+                .into_response()
+        }
+        Err(e) => match e {
+            DBoError::AuthenticationFailure(reason) => authentication_failure_response(reason),
+            DBoError::MissingDocument(_) => {
+                authentication_failure_response(AuthnFailureReason::BadLoginCredentials)
+            }
+            DBoError::InternalConflict => (StatusCode::CONFLICT).into_response(),
+            DBoError::AccountLocked(time) => (
+                StatusCode::FORBIDDEN,
+                Json(AccountLockedResponse::new(time)),
+            )
+                .into_response(),
+            DBoError::AdapterError
+            | DBoError::InvalidEmailAddress
+            | DBoError::TimeZoneParseError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
+            _ => unexpected_error(e, "player login"),
+        },
+    }
+}
+
 pub async fn handle_player_refresh(
     State(repos): State<Repositories>,
     cookies: CookieJar,
 ) -> Response {
     let token_info = match cookies.get("refresh_token") {
         Some(cookie) => cookie.value(),
-        None => return (StatusCode::UNAUTHORIZED).into_response(),
+        None => return authentication_failure_response(AuthnFailureReason::CookieNotSet),
     };
 
     let output =
@@ -292,10 +319,11 @@ pub async fn handle_player_refresh(
                 .into_response()
         }
         Err(e) => match e {
-            DBoError::InvalidToken
-            | DBoError::AuthenticationFailure
-            | DBoError::MissingDocument(_) => (StatusCode::UNAUTHORIZED).into_response(),
-            DBoError::TokenExpired => (StatusCode::GONE).into_response(),
+            DBoError::AuthenticationFailure(reason) => authentication_failure_response(reason),
+            DBoError::MissingDocument(_) => {
+                authentication_failure_response(AuthnFailureReason::BadCookieCredentials)
+            }
+            DBoError::PersistentTokenExpired => (StatusCode::GONE).into_response(),
             DBoError::InternalConflict => (StatusCode::FORBIDDEN).into_response(),
             DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
             _ => unexpected_error(e, "player authentication refresh"),
@@ -310,7 +338,9 @@ pub async fn handle_player_deletion(
 ) -> Response {
     let token = match extract_access_token(headers) {
         Some(t) => t,
-        None => return (StatusCode::BAD_REQUEST).into_response(),
+        None => {
+            return authentication_failure_response(AuthnFailureReason::MissingAuthenticationToken);
+        }
     };
 
     let outcome = PlayerService::delete_player_account(
@@ -324,6 +354,7 @@ pub async fn handle_player_deletion(
     match outcome {
         Ok(()) => (StatusCode::NO_CONTENT).into_response(),
         Err(e) => match e {
+            DBoError::AuthenticationFailure(reason) => authentication_failure_response(reason),
             _ => unexpected_error(e, "player deletion"),
         },
     }
@@ -336,7 +367,9 @@ pub async fn handle_player_username_change(
 ) -> Response {
     let token = match extract_access_token(headers) {
         Some(t) => t,
-        None => return (StatusCode::BAD_REQUEST).into_response(),
+        None => {
+            return authentication_failure_response(AuthnFailureReason::MissingAuthenticationToken);
+        }
     };
 
     let outcome = PlayerService::change_username(
@@ -363,7 +396,9 @@ pub async fn handle_player_password_change(
 ) -> Response {
     let token = match extract_access_token(headers) {
         Some(t) => t,
-        None => return (StatusCode::BAD_REQUEST).into_response(),
+        None => {
+            return authentication_failure_response(AuthnFailureReason::MissingAuthenticationToken);
+        }
     };
 
     let outcome = PlayerService::change_password(
@@ -390,7 +425,9 @@ pub async fn handle_player_proposed_email_change(
 ) -> Response {
     let token = match extract_access_token(headers) {
         Some(t) => t,
-        None => return (StatusCode::BAD_REQUEST).into_response(),
+        None => {
+            return authentication_failure_response(AuthnFailureReason::MissingAuthenticationToken);
+        }
     };
 
     let outcome = PlayerService::change_proposed_email(

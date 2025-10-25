@@ -71,9 +71,9 @@ pub fn generate_access_token(player_id: &str) -> DBoResult<String> {
 /// The token's payload
 ///
 /// ### Errors
-/// - `TokenExpired` if the token is expired
-/// - `InvalidToken` if the token cannot be decoded because it is bad
-/// - `AdapterError` if the token cannot be decoded due to a server-side error
+/// - `AuthenticationFailure(BadAuthenticationToken)` if the token is not valid.
+/// - `AuthenticationFailure(ExpiredAuthenticationToken)` if the token is expired.
+/// - `AdapterError` if the token cannot be decoded due to a server-side error.
 pub fn decode_access_token(token: &str) -> DBoResult<AccessTokenPayload> {
     Ok(decode::<AccessTokenPayload>(
         token,

@@ -11,7 +11,7 @@ use crate::{
         mongo::case_insensitive_collation,
         repositories::Repository,
     },
-    errors::{DBoError, DBoResult},
+    errors::{AuthnFailureReason, DBoError, DBoResult},
     handlers::responses::PlayerInvalidFieldsResponse,
     models::{
         Collectible, Identifiable, Player,
@@ -89,10 +89,12 @@ impl Repository<Player> {
     /// - `jwt`: The JWT
     ///
     /// ### Errors
-    /// - `TokenExpired` if the JWT is expired
-    /// - `TokenPremature` if the JWT was made before player sessions were invalidated
-    /// - `InvalidToken` if the token is bad
-    /// - `MissingDocument` if the player cannot be found
+    /// - `AuthenticationFailure(_)`:
+    ///   - `BadAuthenticationToken` if the token is invalid.
+    ///   - `ExpiredAuthenticationToken` if the token is expired.
+    ///   - `PlayerNotFound` if the token does not represent an existing player in the database.
+    ///   - `PrematureAuthenticationToken` if the player's sessions have been invalidated since the
+    ///     creation of the token.
     /// - `AdapterError` if the database query fails, or if the token cannot be decoded due to a
     ///   server-side error
     pub async fn find_by_token(&self, jwt: &str) -> DBoResult<Player> {
@@ -100,11 +102,17 @@ impl Repository<Player> {
 
         let player = match self.find_by_id(payload.sub()).await? {
             Some(p) => p,
-            None => return Err(DBoError::missing_document(Player::collection_name())),
+            None => {
+                return Err(DBoError::AuthenticationFailure(
+                    AuthnFailureReason::PlayerNotFound,
+                ));
+            }
         };
 
         if payload.made_before(&player.valid_after().to_chrono()) {
-            return Err(DBoError::TokenPremature);
+            return Err(DBoError::AuthenticationFailure(
+                AuthnFailureReason::PrematureAuthenticationToken,
+            ));
         }
 
         Ok(player)

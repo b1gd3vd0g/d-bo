@@ -13,7 +13,7 @@ use crate::{
         jwt::generate_access_token,
         repositories::{Repository, counter_id::CounterId},
     },
-    errors::{DBoError, DBoResult},
+    errors::{AuthnFailureReason, DBoError, DBoResult},
     handlers::responses::SafePlayerResponse,
     models::{
         Collectible, ConfirmationToken, Counter, Identifiable, Player, RefreshToken, UndoToken,
@@ -118,7 +118,7 @@ impl PlayerService {
     /// - `MissingDocument` if either the player or the token could not be found
     /// - `InternalConflict` if the player account is already confirmed
     /// - `RelationalConflict` if the token does not match the player
-    /// - `TokenExpired` if the confirmation token is expired (older than 15 minutes)
+    /// - `PersistentTokenExpired` if the confirmation token is expired (older than 15 minutes)
     /// - `AdapterError` if any database query should fail
     pub async fn confirm_player_account(
         players: &Repository<Player>,
@@ -152,7 +152,7 @@ impl PlayerService {
         }
 
         if token.expired() {
-            return Err(DBoError::TokenExpired);
+            return Err(DBoError::PersistentTokenExpired);
         }
 
         tokens.delete(token.id()).await?;
@@ -265,7 +265,9 @@ impl PlayerService {
             Some(p) => p,
             None => {
                 counters.increment_counter(CounterId::FailedLogins).await?;
-                return Err(DBoError::AuthenticationFailure);
+                return Err(DBoError::AuthenticationFailure(
+                    AuthnFailureReason::BadLoginCredentials,
+                ));
             }
         };
 
@@ -296,7 +298,9 @@ impl PlayerService {
                 .await?;
                 return Err(DBoError::AccountLocked(time.to_chrono()));
             } else {
-                return Err(DBoError::AuthenticationFailure);
+                return Err(DBoError::AuthenticationFailure(
+                    AuthnFailureReason::BadLoginCredentials,
+                ));
             }
         }
 
@@ -410,16 +414,24 @@ impl PlayerService {
 
         let (token_id, secret) = match regex.captures(cookie_value) {
             Some(caps) => (caps[1].to_string(), caps[2].to_string()),
-            None => return Err(DBoError::InvalidToken),
+            None => {
+                return Err(DBoError::AuthenticationFailure(
+                    AuthnFailureReason::NonParseableCookie,
+                ));
+            }
         };
 
         let token = match tokens.find_by_id(&token_id).await? {
             Some(t) => t,
-            None => return Err(DBoError::AuthenticationFailure),
+            None => {
+                return Err(DBoError::AuthenticationFailure(
+                    AuthnFailureReason::BadCookieCredentials,
+                ));
+            }
         };
 
         if token.expired() {
-            return Err(DBoError::TokenExpired);
+            return Err(DBoError::PersistentTokenExpired);
         }
 
         if token.revoked() {
@@ -427,7 +439,9 @@ impl PlayerService {
         }
 
         if !verify_secret(&secret, token.secret())? {
-            return Err(DBoError::AuthenticationFailure);
+            return Err(DBoError::AuthenticationFailure(
+                AuthnFailureReason::BadCookieCredentials,
+            ));
         }
 
         let player = match players.find_by_id(token.player_id()).await? {
@@ -461,11 +475,8 @@ impl PlayerService {
     /// - `password`: The player's password
     ///
     /// ### Errors
-    /// - `TokenExpired` if the access token is expired.
-    /// - `TokenPremature` if the token was created before the player's sessions became invalidated.
-    /// - `InvalidToken` if the token cannot be decoded because it is bad.
-    /// - `MissingDocument` if the player cannot be identified by the token.
-    /// - `AuthenticationFailure` if the password does not match the database.
+    /// - `AuthenticationFailure` if the JWT cannot validate the player's identity, **or** if the
+    ///   password does not match the identified player's current password.
     /// - `AdapterError` if a database query fails, or if the token cannot be decoded due to a
     ///   server-side error.
     pub async fn delete_player_account(
@@ -477,7 +488,9 @@ impl PlayerService {
         let player = players.find_by_token(jwt).await?;
 
         if !verify_secret(password, player.password())? {
-            return Err(DBoError::AuthenticationFailure);
+            return Err(DBoError::AuthenticationFailure(
+                AuthnFailureReason::BadPassword,
+            ));
         }
 
         players.delete(player.id()).await?;
@@ -500,11 +513,8 @@ impl PlayerService {
     /// - `new_username`: The player's new username.
     ///
     /// ### Errors
-    /// - `TokenExpired` if the jwt is expired
-    /// - `TokenPremature` if the jwt was created before the player's sessions were invalidated
-    /// - `InvalidToken` if the jwt cannot be decoded because it is bad
-    /// - `MissingDocument` if the player cannot be found
-    /// - `AuthenticationFailure` if the password does not match the database
+    /// - `AuthenticationFailure` if the JWT cannot validate a player's identity, **or** if the
+    ///   password does not match the identified player's current password.
     /// - `InvalidPlayerInfo` if the new username is not valid
     /// - `UniquenessViolation` if the new username is not case-insensitively unique
     /// - `InvalidEmailAddress` if the email cannot be sent because a player's stored email address
@@ -522,7 +532,9 @@ impl PlayerService {
         let player = players.find_by_token(jwt).await?;
 
         if !verify_secret(password, player.password())? {
-            return Err(DBoError::AuthenticationFailure);
+            return Err(DBoError::AuthenticationFailure(
+                AuthnFailureReason::BadPassword,
+            ));
         }
 
         players.update_username(player.id(), new_username).await?;
@@ -556,11 +568,8 @@ impl PlayerService {
     /// - `new_email`: The player's new proposed email address
     ///
     /// ### Errors
-    /// - `TokenExpired` if the jwt is expired
-    /// - `TokenPremature` if the jwt was created before the player's sessions were invalidated
-    /// - `InvalidToken` if the jwt cannot be decoded because it is bad
-    /// - `MissingDocument` if the player cannot be found
-    /// - `AuthenticationFailure` if the password does not match the database
+    /// - `AuthenticationFailure` if the JWT cannot validate a player's identity, **or** if the
+    ///   password does not match the identified player's current password.
     /// - `InvalidPlayerInfo` if the new email is not valid
     /// - `UniquenessViolation` if the new email is not case-insensitively unique
     /// - `InvalidEmailAddress` if either the *new* email address **or** the currently stored email
@@ -579,7 +588,9 @@ impl PlayerService {
         let player = players.find_by_token(jwt).await?;
 
         if !verify_secret(password, player.password())? {
-            return Err(DBoError::AuthenticationFailure);
+            return Err(DBoError::AuthenticationFailure(
+                AuthnFailureReason::BadPassword,
+            ));
         }
 
         players
@@ -662,7 +673,7 @@ impl PlayerService {
         };
 
         if token.expired() {
-            return Err(DBoError::TokenExpired);
+            return Err(DBoError::PersistentTokenExpired);
         }
 
         if token.player_id() != player.id() {
@@ -693,10 +704,8 @@ impl PlayerService {
     /// - `new_password`: The player's new password to be set
     ///
     /// ### Errors
-    /// - `TokenExpired` if the access token is expired
-    /// - `TokenPremature` if the token was created before invalidating the player's sessions
-    /// - `InvalidToken` if the token cannot be decoded because it is bad
-    /// - `MissingDocument` if the player cannot be found
+    /// - `AuthenticationFailure` if the JWT cannot validate a player's identity, **or** if the
+    ///   password does not match the identified player's current password.
     /// - `InvalidPlayerInfo` if the password is not valid
     /// - `InternalConflict` if the new password matches any of the player's last five passwords
     /// - `InvalidEmailAddress` if the player's email address cannot be parsed into a Mailbox
@@ -713,7 +722,9 @@ impl PlayerService {
         let player = players.find_by_token(jwt).await?;
 
         if !verify_secret(old_password, player.password())? {
-            return Err(DBoError::AuthenticationFailure);
+            return Err(DBoError::AuthenticationFailure(
+                AuthnFailureReason::BadPassword,
+            ));
         }
 
         players.update_password(player.id(), new_password).await?;
