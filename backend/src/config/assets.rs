@@ -44,6 +44,8 @@ static CHANGE_USERNAME: &str = "change.username";
 static REGISTRATION_EMAIL: &str = "registration";
 #[doc(hidden)]
 static LOCKOUT_EMAIL: &str = "lockout";
+#[doc(hidden)]
+static LOGIN_ASSISTANCE: &str = "login.assistance";
 
 // Email subjects
 #[doc(hidden)]
@@ -78,6 +80,11 @@ static ES_SUB_REGISTRATION: &str =
 static EN_SUB_LOCKOUT: &str = "Your D-Bo account has been blocked!";
 #[doc(hidden)]
 static ES_SUB_LOCKOUT: &str = "¡Su cuenta de D-Bo ha sido bloqueado!";
+
+#[doc(hidden)]
+static EN_SUB_LOGIN_ASSISTANCE: &str = "Help log in to D-Bo!";
+#[doc(hidden)]
+static ES_SUB_LOGIN_ASSISTANCE: &str = "Ayuda con el ingreso para D-Bo!";
 
 // Image filenames
 #[doc(hidden)]
@@ -186,6 +193,9 @@ pub struct EmailTemplates {
     pub change_username: EmailLocalizationVariants,
     /// The lockout notification email template, sent after five or more failed login attempts.
     pub lockout: EmailLocalizationVariants,
+    /// The login assistance email provides the player with their own username, and provides a link
+    /// to reset their password valid for the next 15 minutes.
+    pub login_assistance: EmailLocalizationVariants,
     /// The registration email template, sent immediately upon player account creation.
     pub registration: EmailLocalizationVariants,
 }
@@ -218,6 +228,11 @@ impl EmailTemplates {
                 ES_SUB_CHANGE_USERNAME,
             ),
             lockout: EmailLocalizationVariants::new(LOCKOUT_EMAIL, EN_SUB_LOCKOUT, ES_SUB_LOCKOUT),
+            login_assistance: EmailLocalizationVariants::new(
+                LOGIN_ASSISTANCE,
+                EN_SUB_LOGIN_ASSISTANCE,
+                ES_SUB_LOGIN_ASSISTANCE,
+            ),
             registration: EmailLocalizationVariants::new(
                 REGISTRATION_EMAIL,
                 EN_SUB_REGISTRATION,
