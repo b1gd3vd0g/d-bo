@@ -18,6 +18,8 @@ mod player_repo;
 #[doc(hidden)]
 mod refresh_token_repo;
 #[doc(hidden)]
+mod reset_token_repo;
+#[doc(hidden)]
 mod undo_token_repo;
 
 use mongodb::{Collection, bson::doc};
