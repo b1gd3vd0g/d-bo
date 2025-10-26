@@ -454,4 +454,24 @@ impl Repository<Player> {
             _ => Ok(()),
         }
     }
+
+    pub async fn reject_proposed_email(&self, player_id: &str) -> DBoResult<()> {
+        let player = match self.find_by_id(player_id).await? {
+            Some(p) => p,
+            None => return Err(DBoError::missing_document(Player::collection_name())),
+        };
+
+        if player.proposed_email().is_none() {
+            return Err(DBoError::InternalConflict);
+        }
+
+        self.collection
+            .find_one_and_update(
+                doc! { "player_id": player_id },
+                doc! { "proposed_email": None::<String> },
+            )
+            .await?;
+
+        Ok(())
+    }
 }
