@@ -22,4 +22,24 @@ impl Repository<ConfirmationToken> {
             .await?;
         Ok(())
     }
+
+    /// Delete a confirmation token by its player id.
+    ///
+    /// ### Arguments
+    /// - `player_id`: The player's unique identifier
+    ///
+    /// ### Returns
+    /// The deleted token, if it was found.
+    ///
+    /// ### Errors
+    /// - `AdapterError` if the query fails.
+    pub async fn delete_by_player_id(
+        &self,
+        player_id: &str,
+    ) -> DBoResult<Option<ConfirmationToken>> {
+        Ok(self
+            .collection
+            .find_one_and_delete(doc! { "player_id": player_id })
+            .await?)
+    }
 }
