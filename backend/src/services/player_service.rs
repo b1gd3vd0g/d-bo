@@ -849,6 +849,27 @@ impl PlayerService {
         token_id: &str,
         new_password: &str,
     ) -> DBoResult<()> {
+        let player = match players.find_by_id(player_id).await? {
+            Some(p) => p,
+            None => return Err(DBoError::missing_document(Player::collection_name())),
+        };
+
+        let token = match tokens.find_by_id(token_id).await? {
+            Some(t) => t,
+            None => return Err(DBoError::missing_document(ResetToken::collection_name())),
+        };
+
+        if token.expired() {
+            return Err(DBoError::PersistentTokenExpired);
+        }
+
+        if token.player_id() != player.id() {
+            return Err(DBoError::RelationalConflict);
+        }
+
+        players.update_password(player.id(), new_password).await?;
+        tokens.delete(token.id()).await?;
+
         Ok(())
     }
 }
