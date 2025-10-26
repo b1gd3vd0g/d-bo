@@ -7,7 +7,7 @@ use crate::{
         email::{
             send_change_email_confirmation_email, send_change_email_warning_email,
             send_change_password_email, send_change_username_email, send_lockout_email,
-            send_registration_email,
+            send_registration_email, send_request_login_assistance_email,
         },
         hashing::{generate_secret, verify_secret},
         jwt::generate_access_token,
@@ -816,6 +816,29 @@ impl PlayerService {
         tokens: &Repository<ResetToken>,
         id: &AccountIdentifier,
     ) -> DBoResult<()> {
+        let option = match id {
+            AccountIdentifier::Username(val) => players.find_by_username(&val).await?,
+            AccountIdentifier::Email(val) => players.find_by_email(&val).await?,
+        };
+
+        let player = match option {
+            Some(p) => p,
+            None => return Err(DBoError::missing_document(Player::collection_name())),
+        };
+
+        let token = ResetToken::new(player.id());
+        tokens.insert(&token).await?;
+
+        send_request_login_assistance_email(
+            player.email(),
+            player.username(),
+            player.id(),
+            token.id(),
+            player.preferred_language(),
+            player.pronoun(),
+        )
+        .await?;
+
         Ok(())
     }
 
