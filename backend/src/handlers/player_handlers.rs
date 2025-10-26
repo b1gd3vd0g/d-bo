@@ -1,7 +1,5 @@
 //! This module provides all HTTP handler functions related to player accounts.
 
-use std::f64::consts::E;
-
 use axum::{
     Json,
     extract::{Path, State},
@@ -19,8 +17,8 @@ use crate::{
     errors::{AuthnFailureReason, DBoError},
     handlers::{
         request_bodies::{
-            PasswordChangeRequestBody, PasswordRequestBody, PlayerLoginRequestBody,
-            PlayerRegistrationRequestBody, ProposedEmailChangeRequestBody,
+            AccountIdentifierRequestBody, PasswordChangeRequestBody, PasswordRequestBody,
+            PlayerLoginRequestBody, PlayerRegistrationRequestBody, ProposedEmailChangeRequestBody,
             UsernameChangeRequestBody,
         },
         responses::{
@@ -522,6 +520,90 @@ pub async fn handle_player_proposed_email_confirmation(
             )
                 .into_response(),
             _ => unexpected_error(e, "proposed email confirmation"),
+        },
+    }
+}
+
+pub async fn handle_player_proposed_email_rejection(
+    State(repos): State<Repositories>,
+    Path((player_id, token_id)): Path<(String, String)>,
+) -> Response {
+    let outcome = PlayerService::reject_proposed_email(
+        repos.players(),
+        repos.undo_tokens(),
+        repos.confirmation_tokens(),
+        &player_id,
+        &token_id,
+    )
+    .await;
+
+    match outcome {
+        Ok(()) => (StatusCode::NO_CONTENT).into_response(),
+        Err(e) => match e {
+            _ => unexpected_error(e, "proposed email rejection"),
+        },
+    }
+}
+
+pub async fn handle_player_password_change_rejection_reset(
+    State(repos): State<Repositories>,
+    Path((player_id, token_id)): Path<(String, String)>,
+) -> Response {
+    let outcome = PlayerService::reset_password_following_rejecting_change(
+        repos.players(),
+        repos.undo_tokens(),
+        &player_id,
+        &token_id,
+    )
+    .await;
+
+    match outcome {
+        Ok(()) => (StatusCode::NO_CONTENT).into_response(),
+        Err(e) => match e {
+            _ => unexpected_error(e, "reset password following change rejection"),
+        },
+    }
+}
+
+pub async fn handle_player_login_assistance_request(
+    State(repos): State<Repositories>,
+    Json(body): Json<AccountIdentifierRequestBody>,
+) -> Response {
+    let identifier = match body.validate() {
+        Ok(id) => id,
+        Err(message) => return (StatusCode::BAD_REQUEST, Json(message)).into_response(),
+    };
+
+    let outcome =
+        PlayerService::request_login_assistance(repos.players(), repos.reset_tokens(), &identifier)
+            .await;
+
+    match outcome {
+        Ok(()) => (StatusCode::NO_CONTENT).into_response(),
+        Err(e) => match e {
+            _ => unexpected_error(e, "request login assistance"),
+        },
+    }
+}
+
+pub async fn handle_player_forgot_password_reset(
+    State(repos): State<Repositories>,
+    Path((player_id, token_id)): Path<(String, String)>,
+    Json(body): Json<PasswordRequestBody>,
+) -> Response {
+    let outcome = PlayerService::reset_forgotten_password(
+        repos.players(),
+        repos.reset_tokens(),
+        &player_id,
+        &token_id,
+        &body.password,
+    )
+    .await;
+
+    match outcome {
+        Ok(()) => (StatusCode::NO_CONTENT).into_response(),
+        Err(e) => match e {
+            _ => unexpected_error(e, "reset forgotten password"),
         },
     }
 }

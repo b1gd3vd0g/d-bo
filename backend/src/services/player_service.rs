@@ -14,9 +14,10 @@ use crate::{
         repositories::{Repository, counter_id::CounterId},
     },
     errors::{AuthnFailureReason, DBoError, DBoResult},
-    handlers::responses::SafePlayerResponse,
+    handlers::{request_bodies::AccountIdentifier, responses::SafePlayerResponse},
     models::{
-        Collectible, ConfirmationToken, Counter, Identifiable, Player, RefreshToken, UndoToken,
+        Collectible, ConfirmationToken, Counter, Identifiable, Player, RefreshToken, ResetToken,
+        UndoToken,
         submodels::{Gender, LanguagePreference, UndoTokenType},
     },
     services::types::LoginTokenInfo,
@@ -744,6 +745,43 @@ impl PlayerService {
         )
         .await?;
 
+        Ok(())
+    }
+
+    pub async fn reject_proposed_email(
+        players: &Repository<Player>,
+        undo_tokens: &Repository<UndoToken>,
+        conf_tokens: &Repository<ConfirmationToken>,
+        player_id: &str,
+        token_id: &str,
+    ) -> DBoResult<()> {
+        Ok(())
+    }
+
+    pub async fn reset_password_following_rejecting_change(
+        players: &Repository<Player>,
+        tokens: &Repository<UndoToken>,
+        player_id: &str,
+        token_id: &str,
+    ) -> DBoResult<()> {
+        Ok(())
+    }
+
+    pub async fn request_login_assistance(
+        players: &Repository<Player>,
+        tokens: &Repository<ResetToken>,
+        id: &AccountIdentifier,
+    ) -> DBoResult<()> {
+        Ok(())
+    }
+
+    pub async fn reset_forgotten_password(
+        players: &Repository<Player>,
+        tokens: &Repository<ResetToken>,
+        player_id: &str,
+        token_id: &str,
+        new_password: &str,
+    ) -> DBoResult<()> {
         Ok(())
     }
 }
