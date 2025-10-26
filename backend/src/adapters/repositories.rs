@@ -25,7 +25,9 @@ use mongodb::{Collection, bson::doc};
 use crate::{
     adapters::mongo::database,
     errors::DBoResult,
-    models::{Collectible, ConfirmationToken, Counter, Model, Player, RefreshToken, UndoToken},
+    models::{
+        Collectible, ConfirmationToken, Counter, Model, Player, RefreshToken, ResetToken, UndoToken,
+    },
 };
 
 /// An interface over a database collection which handles all database interactions related to a
@@ -87,6 +89,8 @@ pub struct Repositories {
     players: Repository<Player>,
     /// The repository handling player refresh tokens.
     refresh_tokens: Repository<RefreshToken>,
+    /// The repository handling player password reset tokens.
+    reset_tokens: Repository<ResetToken>,
     /// The repository handling player undo tokens.
     undo_tokens: Repository<UndoToken>,
 }
@@ -103,10 +107,14 @@ impl Repositories {
                 db.collection(ConfirmationToken::collection_name()),
             )
             .await,
-            counters: Repository::<Counter>::new(db.collection(&Counter::collection_name())).await,
-            players: Repository::<Player>::new(db.collection(&Player::collection_name())).await,
+            counters: Repository::<Counter>::new(db.collection(Counter::collection_name())).await,
+            players: Repository::<Player>::new(db.collection(Player::collection_name())).await,
             refresh_tokens: Repository::<RefreshToken>::new(
                 db.collection(RefreshToken::collection_name()),
+            )
+            .await,
+            reset_tokens: Repository::<ResetToken>::new(
+                db.collection(ResetToken::collection_name()),
             )
             .await,
             undo_tokens: Repository::<UndoToken>::new(db.collection(UndoToken::collection_name()))
@@ -129,10 +137,17 @@ impl Repositories {
         &self.players
     }
 
+    /// Return the refresh token repository.
     pub fn refresh_tokens(&self) -> &Repository<RefreshToken> {
         &self.refresh_tokens
     }
 
+    /// Return the reset token repository.
+    pub fn reset_tokens(&self) -> &Repository<ResetToken> {
+        &self.reset_tokens
+    }
+
+    /// Return the undo token repository.
     pub fn undo_tokens(&self) -> &Repository<UndoToken> {
         &self.undo_tokens
     }

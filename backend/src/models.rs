@@ -665,3 +665,82 @@ impl Indexed for UndoToken {
             .expect("Failed to index the UndoToken collection!");
     }
 }
+
+// /////////// //
+// RESET TOKEN //
+// /////////// //
+
+#[derive(Clone, Deserialize, Serialize)]
+pub struct ResetToken {
+    token_id: String,
+    player_id: String,
+    created: DateTime,
+}
+
+impl ResetToken {
+    pub fn new(player_id: &str) -> Self {
+        Self {
+            token_id: Uuid::new_v4().to_string(),
+            player_id: String::from(player_id),
+            created: DateTime::now(),
+        }
+    }
+
+    pub fn player_id(&self) -> &str {
+        &self.player_id
+    }
+
+    pub fn expired(&self) -> bool {
+        Utc::now() - self.created.to_chrono() > ChronoDuration::seconds(60 * 15)
+    }
+}
+
+impl Collectible for ResetToken {
+    fn collection_name() -> &'static str {
+        "reset-tokens"
+    }
+}
+
+impl Identifiable for ResetToken {
+    fn id_field() -> &'static str {
+        "token_id"
+    }
+
+    fn id(&self) -> &str {
+        &self.token_id
+    }
+}
+
+impl Indexed for ResetToken {
+    /// Index a collection of ResetTokens. The indices include:
+    /// - A uniqueness index on `token_id`
+    /// - A 1-day TTL index on `created`
+    ///
+    /// ### Panics
+    /// If the indices cannot be created for any reason
+    async fn index(collection: &Collection<Self>) {
+        collection
+            .create_indexes(vec![
+                IndexModel::builder()
+                    .keys(doc! { Self::id_field(): 1 })
+                    .options(
+                        IndexOptions::builder()
+                            .name(String::from("token-id-unique"))
+                            .unique(true)
+                            .build(),
+                    )
+                    .build(),
+                IndexModel::builder()
+                    .keys(doc! { "created": 1 })
+                    .options(
+                        IndexOptions::builder()
+                            .name(String::from("created-1d-ttl"))
+                            .expire_after(StdDuration::from_secs(60 * 60 * 24))
+                            .build(),
+                    )
+                    .build(),
+            ])
+            .await
+            .expect("Failed to index the ResetToken collection!");
+    }
+}
