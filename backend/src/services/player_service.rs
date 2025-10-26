@@ -26,8 +26,13 @@ use crate::{
 pub struct PlayerService {}
 
 impl PlayerService {
-    /// Create a new player account in the database, create a new confirmation token for them to
-    /// use, and send a confirmation email to the provided email address.
+    /// Create a new player account in the database.
+    ///
+    /// 1. Validate the input, ensuring uniqueness constraints are met.
+    /// 2. Add the player document to the database.
+    /// 3. Create a new confirmation token for the player and add to the database.
+    /// 4. Send a confirmation email to the provided email address.
+    /// 5. Increment the `AccountsRegistered` counter.
     ///
     /// ### Arguments
     /// - `players`: The player repository
@@ -103,10 +108,13 @@ impl PlayerService {
         Ok(SafePlayerResponse::from(&player))
     }
 
-    /// Confirm a player's account. Find a player by their id, ensure that the account is not
-    /// already confirmed; find the token by its id, ensure that it matches the same player, and
-    /// that it is unexpired; delete the token, confirm the player's account, and increment the
-    /// counter.
+    /// Confirm a newly registered player account.
+    ///
+    /// 1. Find the player by their id, and ensure that the account is not already confirmed.
+    /// 2. Find the token by its id, and ensure that it matches the player and is unexpired.
+    /// 3. Delete the token.
+    /// 4. Confirm the player's account.
+    /// 5. Increment the `AccountsConfirmed` counter.
     ///
     /// ### Arguments
     /// - `players`: The Player repository
@@ -165,12 +173,14 @@ impl PlayerService {
         Ok(())
     }
 
-    /// Reject the creation of a player account. Find a player by their id, and ensure that they are
-    /// not already confirmed; find the confirmation token by id, and ensure that it matches the
-    /// same player. Delete the player account, delete the token, and increment the counter. If the
-    /// player cannot be found, this request will succeed, as that was the point all along. Unlike
-    /// account confirmation, account rejection will succeed even if the token is *expired* after 15
-    /// minutes.
+    /// Reject the creation of a player account.
+    ///
+    /// 1. Find a player by their id, and ensure that the account is not already confirmed.
+    /// 2. Find the token by its id, and ensure that it matches the player.
+    ///     - It does not matter if the token is expired for this request.
+    /// 3. Delete the player account.
+    /// 4. Delete the token.
+    /// 5. Increment the `AccountsRejected` counter.
     ///
     /// ### Arguments
     /// - `players`: The Player repository
@@ -193,7 +203,7 @@ impl PlayerService {
     ) -> DBoResult<()> {
         let player = match players.find_by_id(player_id).await? {
             Some(p) => p,
-            None => return Ok(()),
+            None => return Err(DBoError::missing_document(Player::collection_name())),
         };
 
         if player.confirmed() {
@@ -222,14 +232,20 @@ impl PlayerService {
         Ok(())
     }
 
-    /// Attempt to verify a player's login information. Find the player by username/email, and
-    /// ensure that the account is not currently locked. Check the password against the hash in the
-    /// database - if it does not match, increment the `failed_login` count, locking the player out
-    /// if that count exceeds 4. If the account becomes locked out due to this login attempt, send
-    /// an email to the player notifying them that their account has been locked out.
+    /// Verify a player's login credentials, and provide them with fresh authentication tokens.
     ///
-    /// Upon a login success, generate an access token (a JWT good for 15 minutes) to authenticate
-    /// the player. Then generate a persistent refresh token in the database, good for 30 days.
+    /// 1. Find the player by their username *or* email address.
+    /// 2. Ensure that the account is **confirmed** and **unlocked**.
+    /// 3. Verify the password against the stored hash. If that fails:
+    ///     1. Increment the **application**'s `FailedLogins` counter.
+    ///     2. Increment the **player**'s `failed_login` counter.
+    ///     3. Lock the player's account if the player's failed login count exceeds 4.
+    ///     4. If the account becomes locked, send a lockout notification email to the player.
+    ///     5. Return the appropriate error.
+    /// 4. Generate a new Access Token to authenticate the player.
+    /// 5. Generate a persistent Refresh Token and store it in the database.
+    /// 6. Record the successful login in the player document.
+    /// 7. Increment the application's `Logins` counter.
     ///
     /// ### Arguments
     /// - `players`: The player repository
@@ -241,7 +257,8 @@ impl PlayerService {
     /// The information related to both of the created authentication tokens
     ///
     /// ### Errors
-    /// - `AuthenticationFailure` if the username/email and password do not match our records
+    /// - `AuthenticationFailure(BadLoginCredentials)` if the username/email and password do not
+    ///   match our records
     /// - `InternalConflict` if the account is unconfirmed.
     /// - `AccountLocked` if either the account is already locked, or if authentication failed for a
     ///   fifth (or greater) time, resulting in a new lockout.
@@ -321,12 +338,12 @@ impl PlayerService {
         ))
     }
 
-    /// Resend a new registration email to the player. This happens most likely when a player tries
-    /// to confirm their new account, but finds their original confirmation token to be expired.
+    /// Resend a new registration email to the player.
     ///
-    /// Search for the player by id, and make sure that it is not already confirmed. Find the old
-    /// confirmation token in the database, generate a new one, and replace it. Finally, resend the
-    /// email to the player.
+    /// 1. Find the player by their id, and ensure that the account is not already confirmed.
+    /// 2. Find the token by its id, and ensure that it matches with the player.
+    /// 3. Replace the old confirmation token with a newly generated token.
+    /// 4. Resend the registration email to the player, containing the new token's credentials.
     ///
     /// ### Arguments
     /// - `players`: The Player repository
@@ -387,23 +404,32 @@ impl PlayerService {
         Ok(())
     }
 
-    /// Refresh a players authentication tokens. Parse the cookie to find the ID and secret; find
-    /// the refresh token in the database matching the id; verify that the secrets match; confirm
-    /// that the token is unexpired; find the associated player account; make a new access token;
-    /// replace the old refresh token in the database with a new one.
+    /// Refresh a players authentication tokens.
+    ///
+    /// 1. Parse the cookie value to find the ID and secret
+    /// 2. Find the refresh token by its ID.
+    /// 3. Verify that the secret matches the stored hash.
+    /// 4. Confirm that the token is unexpired.
+    /// 5. Find the associated player account.
+    /// 6. Generate a new Access Token.
+    /// 7. Replace the old token in the database with a newly generated refresh token.
     ///
     /// ### Arguments
     /// - `players`: The Player repository
     /// - `tokens`: The RefreshToken repository
     /// - `cookie_value`: The value of the refresh_token cookie (should be like `"{id}:{secret}"`)
     ///
+    /// ### Returns
+    /// The information related to both of the created access tokens.
+    ///
     /// ### Errors
-    /// - `InvalidToken` if the cookie value cannot be parsed into an id and a secret
-    /// - `AuthenticationFailure` if the token cannot be found, or if the secret does not match
-    /// - `TokenExpired` if the token is found but is older than 30 days
-    /// - `InternalConflict` if the token has been revoked
-    /// - `MissingDocument` if the associated player account cannot be found, or if midway through,
-    ///   the old token cannot be found in order to replace it
+    /// - `AuthenticationFailure(_)`:
+    ///   - `NonParseableCookie` if the cookie value cannot be parsed.
+    ///   - `BadCookieCredentials` if the cookie's id and/or secret do not match the database.
+    ///   - `ExpiredRefreshToken` if the refresh token is expired.
+    ///   - `PlayerNotFound` if the associated player account cannot be found.
+    /// - `MissingDocument` if the *old* refresh token cannot be found midway through the request
+    ///   when attempting to replace it.
     /// - `AdapterError` if any database query should fail, or if the secret could not be verified,
     ///   or if the new token cannot be created, or if the new secret could not be hashed.
     pub async fn refresh_authn_tokens(
@@ -437,10 +463,6 @@ impl PlayerService {
             ));
         }
 
-        if token.revoked() {
-            return Err(DBoError::InternalConflict);
-        }
-
         if !verify_secret(&secret, token.secret())? {
             return Err(DBoError::AuthenticationFailure(
                 AuthnFailureReason::BadCookieCredentials,
@@ -450,7 +472,9 @@ impl PlayerService {
         let player = match players.find_by_id(token.player_id()).await? {
             Some(p) => p,
             None => {
-                return Err(DBoError::missing_document(Player::collection_name()));
+                return Err(DBoError::AuthenticationFailure(
+                    AuthnFailureReason::PlayerNotFound,
+                ));
             }
         };
 

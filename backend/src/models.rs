@@ -473,8 +473,6 @@ pub struct RefreshToken {
     secret: String,
     /// The time at which the refresh token was created
     created: DateTime,
-    /// Indicates whether or not the token has been revoked
-    revoked: bool,
 }
 
 impl RefreshToken {
@@ -492,7 +490,6 @@ impl RefreshToken {
             player_id: String::from(player_id),
             secret: hash_secret(secret)?,
             created: DateTime::now(),
-            revoked: false,
         })
     }
 
@@ -502,10 +499,6 @@ impl RefreshToken {
 
     pub fn secret(&self) -> &str {
         &self.secret
-    }
-
-    pub fn revoked(&self) -> bool {
-        self.revoked
     }
 
     pub fn expired(&self) -> bool {
