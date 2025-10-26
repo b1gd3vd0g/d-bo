@@ -530,3 +530,31 @@ pub async fn send_change_username_email(
 
     Ok(())
 }
+
+pub async fn send_request_login_assistance_email(
+    player_email: &str,
+    username: &str,
+    player_id: &str,
+    token_id: &str,
+    language: &LanguagePreference,
+    pronoun: &Gender,
+) -> DBoResult<()> {
+    let mut helpers = vec![
+        PlaceholderHelper::username(username),
+        PlaceholderHelper::frontend_url(),
+        PlaceholderHelper::player_id(player_id),
+        PlaceholderHelper::token_id(token_id),
+    ];
+
+    let message = build_branded_message(
+        player_email,
+        &ASSETS.templates.login_assistance,
+        language,
+        &mut helpers,
+        &Some(pronoun.clone()),
+    )?;
+
+    MAILER.send(message).await?;
+
+    Ok(())
+}
