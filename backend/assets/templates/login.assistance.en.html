@@ -1,0 +1,82 @@
+<html>
+
+<body style="
+      font-family: Verdana, Geneva, Tahoma, sans-serif;
+      margin: 0;
+      padding: 0;
+    ">
+    <header>
+        <h2 style="text-align: center;">Hello, {{USERNAME}}!</h2>
+        <img src="cid:{{D_BO_LOGO}}" style="
+            width: 50%;
+            margin: auto;
+            display: block;
+            max-width: 300px;
+        " />
+    </header>
+    <main style="padding: 2em;">
+        <p>
+            This email is being sent because you have forgotten your login credentials for D-Bo.
+        </p>
+        <p>
+            Your username is: <b>{{USERNAME}}</b>
+        </p>
+        <p>
+            You can sign in using either your username <b>or</b> the email address at which this email is being
+            received.
+        </p>
+        <p>If you need to reset your password, click this button:</p>
+        <a href="https://{{FRONTEND_URL}}/forgot-password/{{PLAYER_ID}}/{{TOKEN_ID}}?lang=en" target="_blank"
+            rel="noreferrer" style="text-decoration: none;">
+            <div style="
+                background: lightblue;
+                padding: 1em 2em;
+                width: fit-content;
+                font-weight: bold;
+                border-radius: 1em;
+                margin: auto;
+                text-align: center;
+            ">
+                Reset Password
+            </div>
+        </a>
+        <p>
+            <b>Note</b>: This link is only good for the next 15 minutes. If you wait longer than that, you will have to
+            request login assistance again.
+        </p>
+        <p>
+            <b>Aviso</b>: If you reset your password using this link, all current sessions will be terminated. If you
+            were connected on any other device, you will have to sign in again.
+        </p>
+        <div style="margin: 2em auto;">
+            <img src="cid:{{BIGDEVDOG_LOGO}}" style="
+            margin: 1em auto;
+            width: 85%;
+            max-width: 500px;
+            display: block;
+        " />
+            <small style="text-align: center; display: block;">
+                D-Bo is a product of
+                <a href="https://bigdevdog.com" target="_blank" rel="noreferrer">BigDevDog</a>, an independent
+                development studio.
+            </small>
+        </div>
+    </main>
+    <hr style="margin: 2em 0;" />
+    <footer style="padding: 1em 2em;">
+        <small>
+            Please do not reply to this email, as this mailbox is not monitored. For
+            assistance, contact developer Devin Peevy at
+            <a href="mailto:devin.peevy@outlook.com">devin.peevy@outlook.com</a>.
+        </small>
+        <small style="margin-top: 2em;">
+            Received this email by mistake?
+            <a href="{{FRONTEND_URL}}/reject-email/{{PLAYER_ID}}/{{TOKEN_ID}}?lang=en" target="_blank" rel="noreferrer">
+                Click here
+            </a>
+            to remove any information from our database.
+        </small>
+    </footer>
+</body>
+
+</html>

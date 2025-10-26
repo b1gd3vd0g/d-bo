@@ -1,0 +1,76 @@
+<html>
+
+<body style="
+      font-family: Verdana, Geneva, Tahoma, sans-serif;
+      margin: 0;
+      padding: 0;
+    ">
+    <header>
+        <h2 style="text-align: center;">Hola, {{USERNAME}}!</h2>
+        <img src="cid:{{D_BO_LOGO}}" style="
+            width: 50%;
+            margin: auto;
+            display: block;
+            max-width: 300px;
+        " />
+    </header>
+    <main style="padding: 2em;">
+        <p>
+            Este correo se le envía porque se le ha olvidado sus credenciales de acceso para D-Bo.
+        </p>
+        <p>
+            Su nombre de usuari**o/a/e** es: <b>{{USERNAME}}</b>
+        </p>
+        <p>
+            Usted puede ingresar usando su nombre de usuari**o/a/e** <b>o</b> la dirección de correo electrónico en la
+            que se
+            recibe este correo.
+        </p>
+        <p>Si necesita restablecer su contraseña, haga clíc en el siguiente botón:</p>
+        <a href="https://{{FRONTEND_URL}}/forgot-password/{{PLAYER_ID}}/{{TOKEN_ID}}?lang=es" target="_blank"
+            rel="noreferrer" style="text-decoration: none;">
+            <div style="
+                background: lightblue;
+                padding: 1em 2em;
+                width: fit-content;
+                font-weight: bold;
+                border-radius: 1em;
+                margin: auto;
+                text-align: center;
+            ">
+                Restablecer Contraseña
+            </div>
+        </a>
+        <p>
+            <b>Aviso</b>: Este enlace solo está válido durante 15 minutos. Después de 15 minutos, tendrá que solicitar
+            asistencia con el ingreso de nuevo.
+        </p>
+        <p>
+            <b>Aviso</b>: Si usted restablece su contraseña con este enlace, todas las sesiónes actuales se terminarán.
+            Si estaba conectad**o/a/e** en algún otro dispositivo, tendrá que ingresar de nuevo.
+        </p>
+        <div style="margin: 2em auto;">
+            <img src="cid:{{BIGDEVDOG_LOGO}}" style="
+            margin: 1em auto;
+            width: 85%;
+            max-width: 500px;
+            display: block;
+        " />
+            <small style="text-align: center; display: block;">
+                D-Bo es un producto de
+                <a href="https://bigdevdog.com" target="_blank" rel="noreferrer">BigDevDog</a>, un estudio de desarrollo
+                independiente.
+            </small>
+        </div>
+    </main>
+    <hr style="margin: 2em 0;" />
+    <footer style="padding: 1em 2em;">
+        <small>
+            Por favor, no responda a este correo, porque este buzón no se supervisa. Para asistencia adicional,
+            contáctese con el desarrollador Devin Peevy en
+            <a href="mailto:devin@bigdevdog.com">devin@bigdevdog.com</a>.
+        </small>
+    </footer>
+</body>
+
+</html>

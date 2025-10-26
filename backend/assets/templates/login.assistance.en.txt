@@ -1,0 +1,19 @@
+Hello, {{USERNAME}}.
+
+This email is being sent because you have forgotten your login credentials for D-Bo.
+
+Your username is: {{USERNAME}}
+
+You can sign in using either your username OR the email address at which this email is being received.
+
+If you need to reset your password, you can do so by following this link:
+
+https://{{FRONTEND_URL}}/forgot-password/{{PLAYER_ID}}/{{TOKEN_ID}}?lang=en
+
+**Note**: This link is only good for the next 15 minutes. If you wait longer than that, you will have to request login assistance again.
+
+---
+
+D-Bo is a product of BigDevDog, an independent development studio. Visit our site at https://bigdevdog.com.
+
+Please do not reply to this email, as this mailbox is not monitored. For assistance, contact developer Devin Peevy at devin@bigdevdog.com.
