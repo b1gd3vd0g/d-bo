@@ -548,12 +548,14 @@ pub async fn handle_player_proposed_email_rejection(
 pub async fn handle_player_password_change_rejection_reset(
     State(repos): State<Repositories>,
     Path((player_id, token_id)): Path<(String, String)>,
+    Json(body): Json<PasswordRequestBody>,
 ) -> Response {
     let outcome = PlayerService::reset_password_following_rejecting_change(
         repos.players(),
         repos.undo_tokens(),
         &player_id,
         &token_id,
+        &body.password,
     )
     .await;
 
