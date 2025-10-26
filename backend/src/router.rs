@@ -10,10 +10,12 @@ use crate::{
     adapters::repositories::Repositories,
     handlers::player_handlers::{
         handle_player_account_confirmation, handle_player_account_rejection,
-        handle_player_deletion, handle_player_login, handle_player_password_change,
-        handle_player_proposed_email_change, handle_player_proposed_email_confirmation,
-        handle_player_proposed_email_rejection, handle_player_refresh, handle_player_registration,
-        handle_player_username_change, handle_resend_registration_email,
+        handle_player_deletion, handle_player_forgot_password_reset, handle_player_login,
+        handle_player_login_assistance_request, handle_player_password_change,
+        handle_player_password_change_rejection_reset, handle_player_proposed_email_change,
+        handle_player_proposed_email_confirmation, handle_player_proposed_email_rejection,
+        handle_player_refresh, handle_player_registration, handle_player_username_change,
+        handle_resend_registration_email,
     },
 };
 
@@ -57,6 +59,14 @@ pub fn router() -> Router<Repositories> {
             "/players/{player_id}/confirm-proposed-email/{token_id}",
             put(handle_player_proposed_email_confirmation)
                 .delete(handle_player_proposed_email_rejection),
+        )
+        .route(
+            "/players/{player_id}/reject_new_password/{token_id}",
+            put(handle_player_password_change_rejection_reset),
+        )
+        .route(
+            "/players/forgot-password",
+            post(handle_player_login_assistance_request).put(handle_player_forgot_password_reset),
         )
         .layer(cors())
 }
