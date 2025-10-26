@@ -755,6 +755,28 @@ impl PlayerService {
         player_id: &str,
         token_id: &str,
     ) -> DBoResult<()> {
+        let player = match players.find_by_id(player_id).await? {
+            Some(p) => p,
+            None => return Err(DBoError::missing_document(Player::collection_name())),
+        };
+
+        let token = match undo_tokens.find_by_id(token_id).await? {
+            Some(tok) => tok,
+            None => return Err(DBoError::missing_document(UndoToken::collection_name())),
+        };
+
+        if token.expired() {
+            return Err(DBoError::PersistentTokenExpired);
+        }
+
+        if token.player_id() != player.id() {
+            return Err(DBoError::RelationalConflict);
+        }
+
+        players.reject_proposed_email(player.id()).await?;
+        undo_tokens.delete(token.id()).await?;
+        conf_tokens.delete_by_player_id(player.id()).await?;
+
         Ok(())
     }
 
