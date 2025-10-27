@@ -120,8 +120,8 @@ fn extract_access_token(headers: HeaderMap) -> Option<String> {
 ///     - with `InputValidationResponse` body if input fails validation
 ///     - with `SimpleMessageResponse` body if the `time_zone` cannot be parsed
 ///   - `409 CONFLICT` with `ExistingFieldViolationResponse` body
-///   - `500 INTERNAL SERVER ERROR` if an adapter function fails, or if an unexpected `DBoError`
-///     variant occurs.
+///   - `500 INTERNAL SERVER ERROR` if an adapter function fails, if the player's email cannot be
+///     parsed into a Mailbox, or if an unexpected `DBoError` occurs.
 pub async fn handle_player_registration(
     State(repos): State<Repositories>,
     Json(body): Json<PlayerRegistrationRequestBody>,
@@ -257,6 +257,22 @@ pub async fn handle_player_account_rejection(
     }
 }
 
+/// Handle a request to resend a new account's confirmation email.
+///
+/// ### Arguments
+/// - `__arg0`: The repositories stored in the axum router's state.
+/// - `__arg1`: The player's id, then the confirmation token's id.
+///
+/// ### Returns
+/// - Success:
+///   - `204 NO CONTENT`
+/// - Error:
+///   - `403 FORBIDDEN` if the token does not represent the same player.
+///   - `404 NOT FOUND` with a `MissingDocumentResponse` if either the player or confirmation token
+///     cannot be found.
+///   - `409 CONFLICT` if the player account is already confirmed.
+///   - `500 INTERNAL SERVER ERROR` if an adapter fails, if the player's stored email address cannot
+///     be parsed into a Mailbox, or if an unexpected `DBoError` variant occurs.
 pub async fn handle_resend_registration_email(
     State(repos): State<Repositories>,
     Path((player_id, token_id)): Path<(String, String)>,
@@ -287,6 +303,29 @@ pub async fn handle_resend_registration_email(
     }
 }
 
+/// Handle a request for a player to log in.
+///
+/// ### Arguments
+/// - `__arg0`: The repositories stored in the axum router's state.
+/// - `__arg1`: The HTTP request body
+///
+/// ### Returns
+/// - Success:
+///   - `200 OK`, with:
+///     - An `AccessTokenResponse` body providing the player with their new access JWT.
+///     - An HTTP-Only `Set-Cookie` header, providing the credentials for their refresh token, used
+///       exclusively for the `/players/refresh` path.
+/// - Error:
+///   - `401 UNAUTHORIZED` with an `AuthnFailureResponse` if the provided login credentials were not
+///      correct.
+///   - `403 FORBIDDEN` with an `AccountLockedResponse` body if the player's account is locked.
+///   - `409 CONFLICT` if the player's account is unconfirmed.
+///   - `500 INTERNAL SERVER ERROR` if:
+///     - An adapter function fails.
+///     - The login credentials were wrong, AND either:
+///       - The player's stored email cannot be parsed into a Mailbox, OR
+///       - The player's stored time zone could not be parsed.
+///     - An unexpected `DBoError` variant occured.
 pub async fn handle_player_login(
     State(repos): State<Repositories>,
     Json(body): Json<PlayerLoginRequestBody>,
@@ -331,6 +370,23 @@ pub async fn handle_player_login(
     }
 }
 
+/// Handle a request to refresh a player's authentication tokens.
+///
+/// ### Arguments
+/// - `__arg0`: The repositories stored in the axum router's state
+/// - `cookies`: The cookies sent with the HTTP request
+///
+/// ### Returns
+/// - Success:
+///   - `200 OK` with:
+///     - An `AccessTokenResponse` body providing the player with their new access JWT.
+///     - An HTTP-Only `Set-Cookie` header, providing the credentials for a fresh refresh token,
+///       used exclusively for the `/players/refresh` path.
+/// - Error:
+///   - `401 UNAUTHORIZED` with an `AuthnFailureResponse` body if the player could not be
+///     authenticated with the provided cookie credentials.
+///   - `500 INTERNAL SERVER ERROR` if an adapter function failed, or if an unexpected `DBoError`
+///     variant occured.
 pub async fn handle_player_refresh(
     State(repos): State<Repositories>,
     cookies: CookieJar,
@@ -361,14 +417,26 @@ pub async fn handle_player_refresh(
             DBoError::MissingDocument(_) => {
                 authentication_failure_response(AuthnFailureReason::BadCookieCredentials)
             }
-            DBoError::PersistentTokenExpired => (StatusCode::GONE).into_response(),
-            DBoError::InternalConflict => (StatusCode::FORBIDDEN).into_response(),
             DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
             _ => unexpected_error(e, "player authentication refresh"),
         },
     }
 }
 
+/// Handle a request to delete a player's own account.
+///
+/// ### Arguments
+/// - `__arg0`: The repositories stored in the axum router's state
+/// - `headers`: The headers sent with the HTTP request
+///
+/// ### Returns
+/// - Success:
+///   - `204 NO CONTENT`
+/// - Error:
+///   - `401 UNAUTHORIZED` with an `AuthnFailureResponse` body if the JWT authentication fails *or*
+///     if the provided password does not match the database.
+///   - `500 INTERNAL SERVER ERROR` if an adapter function fails, or if an unexpected `DBoError`
+///     variant occurs.
 pub async fn handle_player_deletion(
     State(repos): State<Repositories>,
     headers: HeaderMap,
@@ -399,6 +467,27 @@ pub async fn handle_player_deletion(
     }
 }
 
+/// Handle a request to change a player's username.
+///
+/// This function will also invalidate a player's sessions, requiring them to log in again in order
+/// to use their account.
+///
+/// ### Arguments
+/// - `__arg0`: The repositories stored in the axum router's state.
+/// - `headers`: The headers sent with the HTTP request.
+///
+/// ### Returns
+/// - Success:
+///   - `204 NO CONTENT`
+/// - Error:
+///   - `400 BAD REQUEST` with a `PlayerInvalidFieldsResponse` if the new username does not pass
+///     validation checks.
+///   - `401 UNAUTHORIZED` with an `AuthnFailureResponse` body if JWT authentication fails *or* the
+///     provided password does not match the database.
+///   - `409 CONFLICT` with a `PlayerUniquenessViolationResponse` if the new username is not
+///     case-insensitively unique.
+///   - `500 INTERNAL SERVER ERROR` if an adapter function fails, if the player's stored email
+///     address cannot be parsed into a Mailbox, or if an unexpected `DBoError` variant occurs.
 pub async fn handle_player_username_change(
     State(repos): State<Repositories>,
     headers: HeaderMap,
@@ -440,6 +529,27 @@ pub async fn handle_player_username_change(
     }
 }
 
+/// Handle a request to change a player's current password.
+///
+/// This function will also invalidate a player's current sessions, requiring them to log in again
+/// in order to use their account.
+///
+/// ### Arguments
+/// - `__arg0`: The repositories stored in the axum router's state.
+/// - `headers`: The headers sent with the HTTP request.
+/// - `__arg2`: The HTTP request body.
+///
+/// ### Returns
+/// - Success:
+///   - `204 NO CONTENT`
+/// - Error:
+///   - `400 BAD REQUEST` with a `PlayerInvalidFieldsResponse` if the provided `new_password` does
+///     not pass validation checks
+///   - `401 UNAUTHORIZED` if the JWT authentication fails, or if the provided `old_password` does
+///     not match the database.
+///   - `409 CONFLICT` if the `new_password` matches any of the player's last five used passwords.
+///   - `500 INTERNAL SERVER ERROR` if an adapter function fails, if the player's stored email
+///     address cannot be parsed into a Mailbox, or if an unexpected `DBoError` variant occurs.
 pub async fn handle_player_password_change(
     State(repos): State<Repositories>,
     headers: HeaderMap,
@@ -477,6 +587,25 @@ pub async fn handle_player_password_change(
     }
 }
 
+/// Handle a request to change a player's **proposed** email address.
+///
+/// ### Arguments
+/// - `__arg0`: The repositories stored in the axum router's state.
+/// - `headers`: The headers sent with the HTTP request.
+/// - `__arg2`: The HTTP request body.
+///
+/// ### Returns
+/// - Success:
+///   - `204 NO CONTENT`
+/// - Error:
+///   - `400 BAD REQUEST` with a `PlayerInvalidFieldsResponse` if the proposed email address does
+///     not pass validation checks.
+///   - `401 UNAUTHORIZED` if JWT authentication fails, *or* if the provided password is incorrect.
+///   - `409 CONFLICT` with a `PlayerUniquenessViolationResponse` if the proposed email address is
+///     not case-insensitively unique.
+///   - `500 INTERNAL SERVER ERROR` if an adapter function fails, if the either the player's current
+///     *or* proposed email address cannot be parsed into a Mailbox, or if an unexpected `DBoError`
+///     variant occurs.
 pub async fn handle_player_proposed_email_change(
     State(repos): State<Repositories>,
     headers: HeaderMap,
@@ -519,6 +648,31 @@ pub async fn handle_player_proposed_email_change(
     }
 }
 
+/// Handle a request to confirm a player's proposed email address.
+///
+/// This function will also invalidate a player's current sessions, requiring them to log in again
+/// in order to use their account.
+///
+/// ### Arguments
+/// - `__arg0`: The repositories stored in the axum router's state.
+/// - `__arg1`: The player's id, then the confirmation token's id.
+///
+/// ### Returns
+/// - Success:
+///   - `204 NO CONTENT`
+/// - Error:
+///   - `403 FORBIDDEN` if the confirmation token does not represent the same player.
+///   - `404 NOT FOUND` with a `MissingDocumentResponse` if either the player or the token could not
+///     be found.
+///   - `409 CONFLICT` with a:
+///     - `SimpleMessageResponse` body if the player does not have a proposed email address to confirm.
+///     - `PlayerUniquenessViolationResponse` body if the proposed email address is not
+///       case-insensitively unique.
+///     - `PlayerInvalidFieldsResponse` body if the proposed email address does not pass validation
+///       checks.
+///   - `410 GONE` if the confirmation token has expired.
+///   - `500 INTERNAL SERVER ERROR` if an adapter function fails, or if an unexpected `DBoError`
+///     variant occurs.
 pub async fn handle_player_proposed_email_confirmation(
     State(repos): State<Repositories>,
     Path((player_id, token_id)): Path<(String, String)>,
@@ -550,18 +704,36 @@ pub async fn handle_player_proposed_email_confirmation(
             )
                 .into_response(),
             DBoError::InvalidPlayerInfo(probs) => {
-                (StatusCode::BAD_REQUEST, Json(probs)).into_response()
+                (StatusCode::CONFLICT, Json(probs)).into_response()
             }
             DBoError::UniquenessViolation(u, e) => (
                 StatusCode::CONFLICT,
                 Json(PlayerUniquenessViolationResponse::new(u, e)),
             )
                 .into_response(),
+            DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
             _ => unexpected_error(e, "proposed email confirmation"),
         },
     }
 }
 
+/// Handle a request to *reject* a newly proposed email address.
+///
+/// ### Arguments
+/// - `__arg0`: The repositories stored in the axum router's state.
+/// - `__arg1`: The player's ID, then the undo token's ID.
+///
+/// ### Returns
+/// - Success:
+///   - `204 NO CONTENT`
+/// - Error:
+///   - `403 FORBIDDEN` if the undo token does not represent the same player account.
+///   - `404 NOT FOUND` with a `MissingDocumentResponse` body if the player or undo token cannot be
+///     found.
+///   - `409 CONFLICT` if the player does not have a `proposed_email` field.
+///   - `410 GONE` if the undo token has expired.
+///   - `500 INTERNAL SERVER ERROR` if an adapter function fails, or if an unexpected `DBoError`
+///     variant occurs.
 pub async fn handle_player_proposed_email_rejection(
     State(repos): State<Repositories>,
     Path((player_id, token_id)): Path<(String, String)>,
@@ -578,11 +750,43 @@ pub async fn handle_player_proposed_email_rejection(
     match outcome {
         Ok(()) => (StatusCode::NO_CONTENT).into_response(),
         Err(e) => match e {
+            DBoError::MissingDocument(collection) => (
+                StatusCode::NOT_FOUND,
+                Json(MissingDocumentResponse::new(&collection)),
+            )
+                .into_response(),
+            DBoError::PersistentTokenExpired => (StatusCode::GONE).into_response(),
+            DBoError::RelationalConflict => (StatusCode::FORBIDDEN).into_response(),
+            DBoError::InternalConflict => (StatusCode::CONFLICT).into_response(),
+            DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
             _ => unexpected_error(e, "proposed email rejection"),
         },
     }
 }
 
+/// Handle a request to reset a player's password, using an undo token, following an unauthorized
+/// password reset.
+///
+/// This function will also invalidate a player's current sessions, requiring them to log in again
+/// in order to use their account.
+///
+/// ### Arguments
+/// - `__arg0`: The repositories stored in the axum router's state.
+/// - `__arg1`: The player's ID, then the undo token's ID.
+/// - `__arg2`: The HTTP request body.
+///
+/// ### Returns
+/// - Success:
+///   - `204 NO CONTENT`
+/// - Error:
+///   - `400 BAD REQUEST` if the provided password does not pass validation checks.
+///   - `403 FORBIDDEN` if the undo token does not represent the same player.
+///   - `404 NOT FOUND` with a `MissingDocumentResponse` body if either the player or the undo token
+///     cannot be found.
+///   - `409 CONFLICT` if the provided password matches any of the player's previous five passwords.
+///   - `410 GONE` if the undo token has expired.
+///   - `500 INTERNAL SERVER ERROR` if an adapter function fails, or if an unexpected `DBoError`
+///     variant occurs.
 pub async fn handle_player_password_change_rejection_reset(
     State(repos): State<Repositories>,
     Path((player_id, token_id)): Path<(String, String)>,
@@ -600,11 +804,39 @@ pub async fn handle_player_password_change_rejection_reset(
     match outcome {
         Ok(()) => (StatusCode::NO_CONTENT).into_response(),
         Err(e) => match e {
+            DBoError::MissingDocument(collection) => (
+                StatusCode::NOT_FOUND,
+                Json(MissingDocumentResponse::new(&collection)),
+            )
+                .into_response(),
+            DBoError::PersistentTokenExpired => (StatusCode::GONE).into_response(),
+            DBoError::RelationalConflict => (StatusCode::FORBIDDEN).into_response(),
+            DBoError::InvalidPlayerInfo(probs) => {
+                (StatusCode::BAD_REQUEST, Json(probs)).into_response()
+            }
+            DBoError::InternalConflict => (StatusCode::CONFLICT).into_response(),
+            DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
             _ => unexpected_error(e, "reset password following change rejection"),
         },
     }
 }
 
+/// Handle a request for login assistance with a player's account.
+///
+/// ### Arguments
+/// - `__arg0`: The repositories stored in the axum router's state.
+/// - `__arg1`: The HTTP request body.
+///
+/// ### Returns
+/// - Success:
+///   - `204 NO CONTENT` if **either**:
+///     - The account was found and the assistance email was sent, or
+///     - No account was found, and therefore no email was sent.
+/// - Error:
+///   - `400 BAD REQUEST` with a `SimpleMessageResponse` body if NO identifier is provided, or if
+///     BOTH identifiers are provided.
+///   - `500 INTERNAL SERVER ERROR` if an adapter function fails, if the player's stored email
+///     address cannot be parsed into a Mailbox, or if an unexpected `DBoError` variant occurs.
 pub async fn handle_player_login_assistance_request(
     State(repos): State<Repositories>,
     Json(body): Json<AccountIdentifierRequestBody>,
@@ -621,11 +853,35 @@ pub async fn handle_player_login_assistance_request(
     match outcome {
         Ok(()) => (StatusCode::NO_CONTENT).into_response(),
         Err(e) => match e {
+            DBoError::MissingDocument(_) => (StatusCode::NO_CONTENT).into_response(),
+            DBoError::AdapterError | DBoError::InvalidEmailAddress => {
+                (StatusCode::INTERNAL_SERVER_ERROR).into_response()
+            }
             _ => unexpected_error(e, "request login assistance"),
         },
     }
 }
 
+/// Handle a request to reset a player's forgotten password.
+///
+/// ### Arguments
+/// - `__arg0`: The repositories stored in the axum router's state.
+/// - `__arg1`: The player's ID, then the reset token's ID.
+/// - `__arg2`: The HTTP request body.
+///
+/// ### Returns
+/// - Success:
+///   - `204 NO CONTENT`
+/// - Error:
+///   - `400 BAD REQUEST` with a `PlayerInvalidFieldsResponse` body if the provided password does
+///     not pass validation checks.
+///   - `403 FORBIDDEN` if the reset token does not represent the same player account.
+///   - `404 NOT FOUND` with a `MissingDocumentResponse` body if the player or reset token cannot be
+///     found.
+///   - `409 CONFLICT` if the new password matches any of the player's last 5 passwords.
+///   - `410 GONE` if the reset token has expired.
+///   - `500 INTERNAL SERVER ERROR` if an adapter function fails, or if an unexpected `DBoError`
+///     variant occurs.
 pub async fn handle_player_forgot_password_reset(
     State(repos): State<Repositories>,
     Path((player_id, token_id)): Path<(String, String)>,
@@ -643,6 +899,18 @@ pub async fn handle_player_forgot_password_reset(
     match outcome {
         Ok(()) => (StatusCode::NO_CONTENT).into_response(),
         Err(e) => match e {
+            DBoError::MissingDocument(collection) => (
+                StatusCode::NOT_FOUND,
+                Json(MissingDocumentResponse::new(&collection)),
+            )
+                .into_response(),
+            DBoError::PersistentTokenExpired => (StatusCode::GONE).into_response(),
+            DBoError::RelationalConflict => (StatusCode::FORBIDDEN).into_response(),
+            DBoError::InvalidPlayerInfo(probs) => {
+                (StatusCode::BAD_REQUEST, Json(probs)).into_response()
+            }
+            DBoError::InternalConflict => (StatusCode::CONFLICT).into_response(),
+            DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
             _ => unexpected_error(e, "reset forgotten password"),
         },
     }
