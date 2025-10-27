@@ -191,7 +191,7 @@ impl PlayerService {
     ///
     /// ### Errors
     /// - `InternalConflict` if the account is already confirmed
-    /// - `MissingDocument` if the token cannot be found
+    /// - `MissingDocument` if the player or token cannot be found
     /// - `RelationalConflict` if the player account does not match the token
     /// - `AdapterError` if any database query should fail
     pub async fn reject_player_account(
