@@ -455,6 +455,15 @@ impl Repository<Player> {
         }
     }
 
+    /// Reject a player's `proposed_email` address.
+    ///
+    /// Find the player by their ID, ensure that it contains a `proposed_email` field, and reset
+    /// that field to `None`.
+    ///
+    /// ### Errors
+    /// - `MissingDocument` if the player cannot be found.
+    /// - `InternalConflict` if the player does not have a `proposed_email` field.
+    /// - `AdapterError` if a database query should fail.
     pub async fn reject_proposed_email(&self, player_id: &str) -> DBoResult<()> {
         let player = match self.find_by_id(player_id).await? {
             Some(p) => p,
