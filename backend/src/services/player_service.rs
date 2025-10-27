@@ -408,8 +408,8 @@ impl PlayerService {
     ///
     /// 1. Parse the cookie value to find the ID and secret
     /// 2. Find the refresh token by its ID.
-    /// 3. Verify that the secret matches the stored hash.
-    /// 4. Confirm that the token is unexpired.
+    /// 3. Confirm that the token is unexpired.
+    /// 4. Verify that the secret matches the stored hash.
     /// 5. Find the associated player account.
     /// 6. Generate a new Access Token.
     /// 7. Replace the old token in the database with a newly generated refresh token.
@@ -491,9 +491,12 @@ impl PlayerService {
         ))
     }
 
-    /// Delete a player's account. This requires that they have a valid access token to identify
-    /// them, and they must also provide their password to further verify their identity. Find the
-    /// player by the token, delete the document if the password matches, and increment the counter.
+    /// Delete a player's own account.
+    ///
+    /// 1. Identify a player by their access JWT.
+    /// 2. Verify that their password matches the stored hash associated with their account.
+    /// 3. Delete the document.
+    /// 4. Increment the `AccountsDeleted` counter.
     ///
     /// ### Arguments
     /// - `players`: The Player Repository
@@ -502,8 +505,13 @@ impl PlayerService {
     /// - `password`: The player's password
     ///
     /// ### Errors
-    /// - `AuthenticationFailure` if the JWT cannot validate the player's identity, **or** if the
-    ///   password does not match the identified player's current password.
+    /// - `AuthenticationFailure(_)`:
+    ///   - `BadAuthenticationToken` if the JWT cannot be parsed.
+    ///   - `ExpiredAuthenticationToken` if the JWT is expired.
+    ///   - `PlayerNotFound` if the player document associated with the access token was missing.
+    ///   - `PrematureAuthenticationToken` if the JWT was created before a player's sessions were
+    ///     invalidated.
+    ///   - `BadPassword` if the password does not match the identified player document.
     /// - `AdapterError` if a database query fails, or if the token cannot be decoded due to a
     ///   server-side error.
     pub async fn delete_player_account(
@@ -528,9 +536,14 @@ impl PlayerService {
         Ok(())
     }
 
-    /// Change a player's username in the database. Find the player using their access token, verify
-    /// that their password is correct, update the username, invalidate all player sessions, and
-    /// send an email to the player informing them of this change.
+    /// Change a player's username.
+    ///
+    /// 1. Find the player by their access JWT.
+    /// 2. Verify that their password matches the stored hash in the player's account.
+    /// 3. Update the player's username:
+    ///     - Ensure it is valid and unique.
+    ///     - Update the document, invalidating their existing sessions.
+    /// 4. Send a notification email to the player, informing them that their username has changed.
     ///
     /// ### Arguments
     /// - `players`: The Player repository
@@ -540,10 +553,16 @@ impl PlayerService {
     /// - `new_username`: The player's new username.
     ///
     /// ### Errors
-    /// - `AuthenticationFailure` if the JWT cannot validate a player's identity, **or** if the
-    ///   password does not match the identified player's current password.
-    /// - `InvalidPlayerInfo` if the new username is not valid
-    /// - `UniquenessViolation` if the new username is not case-insensitively unique
+    /// - `AuthenticationFailure(_)`:
+    ///   - `BadAuthenticationToken` if the JWT cannot be parsed.
+    ///   - `ExpiredAuthenticationToken` if the JWT is expired.
+    ///   - `PlayerNotFound` if the player document associated with the access token was missing.
+    ///   - `PrematureAuthenticationToken` if the JWT was created before a player's sessions were
+    ///     invalidated.
+    ///   - `BadPassword` if the password does not match the identified player document.
+    /// - `InvalidPlayerInfo` if the new username is not valid.
+    /// - `UniquenessViolation` if the new username is not case-insensitively unique.
+    /// - `MissingDocument` if midway through the request, the player cannot be found.
     /// - `InvalidEmailAddress` if the email cannot be sent because a player's stored email address
     ///   cannot be parsed into a Mailbox
     /// - `AdapterError` if a database query fails, or if the token cannot be decoded due to a
@@ -579,12 +598,19 @@ impl PlayerService {
         Ok(())
     }
 
-    /// Change a player's proposed email address. Find the player in the database by their access
-    /// token. Confirm that their password matches the database. Validate the new email address, and
-    /// ensure that it is case-insensitively unique. Update the player's "proposed_email" field.
-    /// Create a new undo token and a new confirmation token, and insert both into the database.
-    /// Send a warning email to the player's current email address, and send a confirmation email to
-    /// their new one.
+    /// Change a player's **proposed** email address.
+    ///
+    /// 1. Find the player by their access JWT.
+    /// 2. Confirm that their password matches the hash stored in the database.
+    /// 3. Update the player's **proposed** email address:
+    ///     - Ensure that it is valid and unique.
+    ///     - Update the document.
+    /// 4. Create a new UndoToken for the player and store it in the database.
+    /// 5. Create a new ConfirmationToken for the player and store it in the database.
+    /// 6. Send a *warning* email to the player's **current** email address, informing them of the
+    ///    proposed change and providing a link to undo the pending change.
+    /// 7. Send a *confirmation* email to the player's **proposed** email address, allowing them to
+    ///    confirm the new email address and officially replace the current email.
     ///
     /// ### Arguments
     /// - `players`: The Player repository
@@ -595,12 +621,17 @@ impl PlayerService {
     /// - `new_email`: The player's new proposed email address
     ///
     /// ### Errors
-    /// - `AuthenticationFailure` if the JWT cannot validate a player's identity, **or** if the
-    ///   password does not match the identified player's current password.
-    /// - `InvalidPlayerInfo` if the new email is not valid
-    /// - `UniquenessViolation` if the new email is not case-insensitively unique
+    /// - `AuthenticationFailure(_)`:
+    ///   - `BadAuthenticationToken` if the JWT cannot be parsed.
+    ///   - `ExpiredAuthenticationToken` if the JWT is expired.
+    ///   - `PlayerNotFound` if the player document associated with the access token was missing.
+    ///   - `PrematureAuthenticationToken` if the JWT was created before a player's sessions were
+    ///     invalidated.
+    ///   - `BadPassword` if the password does not match the identified player document.
+    /// - `InvalidPlayerInfo` if the new email is not valid.
+    /// - `UniquenessViolation` if the new email is not case-insensitively unique.
     /// - `InvalidEmailAddress` if either the *new* email address **or** the currently stored email
-    ///   address cannot be parsed into a Mailbox
+    ///   address cannot be parsed into a Mailbox.
     /// - `AdapterError` if a database query fails, or if the token cannot be decoded due to a
     ///   server-side error, or if the player's stored hash could not be parsed, or if the
     ///   notification email cannot be sent due to a server-side error.
@@ -655,13 +686,16 @@ impl PlayerService {
         Ok(())
     }
 
-    /// Confirm a player's proposed email address. Find the player and the confirmation token by
-    /// their ids. Confirm that the token is unexpired, and that it represents the same player.
-    /// Confirm the player's proposed email address, validating it and ensuring that it is still
-    /// unique. Change the "email" field to the proposed email, change the "proposed_email" field
-    /// back to none, and invalidate a player's access tokens by setting the "session_valid_after"
-    /// field. Delete the confirmation token from the database, as well as the undo token that was
-    /// created when the new email address was proposed.
+    /// Confirm a player's proposed email address.
+    ///
+    /// 1. Find the player by their id.
+    /// 2. Find the confirmation token by its id.
+    /// 3. Confirm that the token is unexpired, and that it matches with the same player.
+    /// 4. Confirm the player's **proposed** email address, making it the **email**.
+    ///     - Ensure that the `proposed_email` field exists, and that it is valid and unique.
+    ///     - Invalidate the player's current sessions.
+    /// 5. Delete the used confirmation token from the database.
+    /// 6. Delete the UndoToken that was created when the player's new email address was proposed.
     ///
     /// ### Arguments
     /// - `players`: The Player repository
@@ -672,7 +706,7 @@ impl PlayerService {
     ///
     /// ### Errors
     /// - `MissingDocument` if the player or the confirmation token cannot be found
-    /// - `TokenExpired` if the confirmation token is expired
+    /// - `PersistentTokenExpired` if the confirmation token is expired
     /// - `RelationalConflict` if the token does not match the player
     /// - `InternalConflict` if the player does not have a proposed email address
     /// - `InvalidPlayerInfo` if the proposed email address cannot be validated
@@ -716,12 +750,18 @@ impl PlayerService {
         Ok(())
     }
 
-    /// Change a player's password. Find the player using their access token. Ensure that the old
-    /// password is the same as is stored in the database. Update the player's password, ensuring
-    /// that it is valid and that it does not match their last 5 passwords - update their
-    /// "last_passwords" as well. Invalidate the player's access tokens by changing the
-    /// "session_valid_after" field. Create a new undo token and store it in the database. Send an
-    /// email to the player informing them of this change.
+    /// Change a player's password.
+    ///
+    /// 1. Find the player by their access JWT.
+    /// 2. Verify that their password matches the stored hash in the database.
+    /// 3. Update the player's password:
+    ///     - Ensure that it is valid
+    ///     - Ensure that it does not match any of their last five passwords.
+    ///     - Rotate the player's `last_passwords`, and update their current `password`.
+    ///     - Invalidate the player's existing sessions.
+    /// 4. Create a new UndoToken for the player, and add it to the database.
+    /// 5. Send the player a notification email, providing them with a link to reset their password
+    ///    without logging in, which is good for 24 hours.
     ///
     /// ### Arguments
     /// - `players`: The Player repository
@@ -731,9 +771,16 @@ impl PlayerService {
     /// - `new_password`: The player's new password to be set
     ///
     /// ### Errors
-    /// - `AuthenticationFailure` if the JWT cannot validate a player's identity, **or** if the
-    ///   password does not match the identified player's current password.
+    /// - `AuthenticationFailure(_)`:
+    ///   - `BadAuthenticationToken` if the JWT cannot be parsed.
+    ///   - `ExpiredAuthenticationToken` if the JWT is expired.
+    ///   - `PlayerNotFound` if the player document associated with the access token was missing.
+    ///   - `PrematureAuthenticationToken` if the JWT was created before a player's sessions were
+    ///     invalidated.
+    ///   - `BadPassword` if the password does not match the identified player document.
     /// - `InvalidPlayerInfo` if the password is not valid
+    /// - `MissingDocument` if midway through the function, the player account can no longer be
+    ///   found.
     /// - `InternalConflict` if the new password matches any of the player's last five passwords
     /// - `InvalidEmailAddress` if the player's email address cannot be parsed into a Mailbox
     /// - `AdapterError` if a database query fails, or if the access token cannot be decoded due to
@@ -772,6 +819,28 @@ impl PlayerService {
         Ok(())
     }
 
+    /// Use an undo token to reject a player's proposed email change.
+    ///
+    /// 1. Find the player by their ID.
+    /// 2. Find the token by its ID.
+    /// 3. Ensure that the token is unexpired and that it matches with the same player account.
+    /// 4. Remove the player's `proposed_email` field, if it exists.
+    /// 5. Delete the used undo token from the database.
+    /// 6. Delete the confirmation token that was created when the new email address was proposed.
+    ///
+    /// ### Arguments
+    /// - `players`: The Player Repository
+    /// - `undo_tokens`: The UndoToken Repository
+    /// - `conf_tokens`: The ConfirmationToken Repository
+    /// - `player_id`: The player's identifier
+    /// - `token_id`: The undo token's identifier
+    ///
+    /// ### Errors
+    /// - `MissingDocument` if the player or undo token cannot be found.
+    /// - `PersistentTokenExpired` if the undo token is expired.
+    /// - `RelationalConflict` if the undo token does not match the same player.
+    /// - `InternalConflict` if the player does not have a `proposed_email` field.
+    /// - `AdapterError` if any database query should fail.
     pub async fn reject_proposed_email(
         players: &Repository<Player>,
         undo_tokens: &Repository<UndoToken>,
@@ -804,6 +873,33 @@ impl PlayerService {
         Ok(())
     }
 
+    /// Use an undo token to reset a player's password following an unauthorized password change.
+    ///
+    /// 1. Find the player by their ID.
+    /// 2. Find the undo token by its ID.
+    /// 3. Ensure that the token is unexpired and that it represents the same player account.
+    /// 4. Change the player's password to the new one:
+    ///     - Ensure that it is valid
+    ///     - Ensure that it does not match any of their last five passwords.
+    ///     - Rotate the player's `last_passwords`, and update their current `password`.
+    ///     - Invalidate the player's existing sessions.
+    /// 5. Delete the used undo token from the database.
+    ///
+    /// ### Arguments
+    /// - `players`: The Player Repository
+    /// - `tokens`: The UndoToken Repository
+    /// - `player_id`: The player's identifier
+    /// - `token_id`: The undo token's identifier
+    /// - `new_password`: The player's newly proposed password.
+    ///
+    /// ### Errors
+    /// - `MissingDocument` if either the player or the undo token cannot be found.
+    /// - `PersistentTokenExpired` if the undo token has expired.
+    /// - `RelationalConflict` if the undo token does not represent the same player account.
+    /// - `InvalidPlayerInfo` if the proposed password is not valid.
+    /// - `InternalConflict` if the new password matches any of the player's last five passwords.
+    /// - `AdapterError` if any database query should fail, or if any previous passwords cannot be
+    ///   parsed, or if the new password cannot be hashed.
     pub async fn reset_password_following_rejecting_change(
         players: &Repository<Player>,
         tokens: &Repository<UndoToken>,
@@ -835,6 +931,24 @@ impl PlayerService {
         Ok(())
     }
 
+    /// Send an email providing a player with their username and a link to reset their password.
+    ///
+    /// 1. Identify the account by the username or email address provided in `id`.
+    /// 2. Create a new Reset Token, and store it in the database.
+    /// 3. Send an email to the player, providing them with their username and a link to reset their
+    ///    password, valid for 15 minutes.
+    ///
+    /// ### Arguments
+    /// - `players`: The Player Repository.
+    /// - `tokens`: The ResetToken Repository.
+    /// - `id`: The player's username or email address.
+    ///
+    /// ### Errors
+    /// - `MissingDocument` if the player cannot be found by their identifier.
+    /// - `InvalidEmailAddress` if the player's stored email address cannot be parsed into a
+    ///   Mailbox.
+    /// - `AdapterError` if a database query should fail, or if the email cannot be sent due to a
+    ///   server-side error.
     pub async fn request_login_assistance(
         players: &Repository<Player>,
         tokens: &Repository<ResetToken>,
@@ -866,6 +980,33 @@ impl PlayerService {
         Ok(())
     }
 
+    /// Use a reset token to reset a player's password when they have forgotten it.
+    ///
+    /// 1. Find the player by their ID.
+    /// 2. Find the reset token by its ID.
+    /// 3. Ensure the reset token is unexpired and that it represents the same player account.
+    /// 4. Update the player's password:    
+    ///     - Ensure that it is valid
+    ///     - Ensure that it does not match any of their last five passwords.
+    ///     - Rotate the player's `last_passwords`, and update their current `password`.
+    ///     - Invalidate the player's existing sessions.
+    /// 5. Delete the used reset token from the database.
+    ///
+    /// ### Arguments
+    /// - `players`: The Player Repository
+    /// - `tokens`: The ResetToken Repository
+    /// - `player_id`: The player's unique identifier.
+    /// - `token_id`: The ResetToken's unique identifier.
+    /// - `new_password`: The player's proposed new password.
+    ///
+    /// ### Errors
+    /// - `MissingDocument` if the player or reset token cannot be found.
+    /// - `PersistentTokenExpired` if the reset token is expired.
+    /// - `RelationalConflict` if the reset token does not represent the same player account.
+    /// - `InvalidPlayerInfo` if the password is not valid.
+    /// - `InternalConflict` if the password matches any of the player's last five used passwords.
+    /// - `AdapterError` if a database query fails, or if one of the player's stored hashes cannot
+    ///   be parsed, or if the new password cannot be hashed.
     pub async fn reset_forgotten_password(
         players: &Repository<Player>,
         tokens: &Repository<ResetToken>,
