@@ -531,6 +531,20 @@ pub async fn send_change_username_email(
     Ok(())
 }
 
+/// Send an email to a player, providing them with their username and a link to reset their
+/// password.
+///
+/// ### Arguments
+/// - `player_email`: The player's stored email address.
+/// - `username`: The player's username.
+/// - `player_id`: The player's unique identifier.
+/// - `token_id`: The Reset Token's unique identifier.
+/// - `language`: The player's preferred language.
+/// - `pronoun`: The player's preferred pronouns.
+///
+/// ### Errors
+/// - `InvalidEmailAddress` if `player_email` cannot be parsed into a Mailbox.
+/// - `AdapterError` if the message cannot be constructed or sent due to a server-side error.
 pub async fn send_request_login_assistance_email(
     player_email: &str,
     username: &str,
