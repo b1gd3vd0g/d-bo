@@ -33,6 +33,7 @@ use crate::{
 // HELPER FUNCTIONS //
 // //////////////// //
 
+/// Logs an unexpected `DBoError`, and returns an empty `500` HTTP response.
 fn unexpected_error(error: DBoError, request_name: &str) -> Response {
     eprintln!("An unexpected DBoError occurred during {}!", request_name);
     eprintln!("This should not happen!");
@@ -40,6 +41,9 @@ fn unexpected_error(error: DBoError, request_name: &str) -> Response {
     (StatusCode::INTERNAL_SERVER_ERROR).into_response()
 }
 
+/// Takes in an `AuthnFailureReason` variant, and returns a `401` response with an
+/// `AuthnFailureResponse` body, containing the relevant code to indicate to the client exactly what
+/// went wrong.
 fn authentication_failure_response(reason: AuthnFailureReason) -> Response {
     let code = match reason {
         AuthnFailureReason::BadLoginCredentials => "BLC",
@@ -62,6 +66,7 @@ fn authentication_failure_response(reason: AuthnFailureReason) -> Response {
         .into_response()
 }
 
+/// Builds an HTTP response header which sets an HTTP only cookie for the `/players/refresh` path.
 fn build_refresh_token_header(id: &str, secret: &str) -> HeaderMap {
     let cookie_value = format!("{}:{}", id, secret);
     let cookie = Cookie::build(("refresh_token", cookie_value))
@@ -77,6 +82,7 @@ fn build_refresh_token_header(id: &str, secret: &str) -> HeaderMap {
     headers
 }
 
+/// Extracts the access token (if it exists) from the HTTP request headers.
 fn extract_access_token(headers: HeaderMap) -> Option<String> {
     let header = match headers.get("Authorization") {
         Some(h) => h.to_str(),
@@ -103,18 +109,17 @@ fn extract_access_token(headers: HeaderMap) -> Option<String> {
 /// Handle a request to create a new player account.
 ///
 /// ### Arguments
-/// - `repos`: The Repositories stored in the axum router's state
-/// - `body`: The HTTP request body
+/// - `__arg0`: The Repositories stored in the axum router's state
+/// - `__arg1`: The HTTP request body
 ///
 /// ### Returns
-/// - Success
-///   - `201 CREATED` with a `SafePlayerResponse` body
-/// - Error
-///   - `400 BAD REQUEST`
+/// - Success:
+///   - `201 CREATED` with `SafePlayerResponse` body
+/// - Error:
+///   - `400 BAD REQUEST`:
 ///     - with `InputValidationResponse` body if input fails validation
-///     - with plaintext message if JSON body is malformed
-///   - `409 CONFLICT` with an `ExistingFieldViolationResponse` body
-///   - `422 UNPROCESSABLE ENTITY` with plaintext message if request body is missing fields
+///     - with `SimpleMessageResponse` body if the `time_zone` cannot be parsed
+///   - `409 CONFLICT` with `ExistingFieldViolationResponse` body
 ///   - `500 INTERNAL SERVER ERROR` if an HTTP adapter failed
 pub async fn handle_player_registration(
     State(repos): State<Repositories>,
@@ -160,6 +165,23 @@ pub async fn handle_player_registration(
     }
 }
 
+/// Handle a request to confirm a newly registered player account.
+///
+/// ### Arguments
+/// - `__arg0`: The Repositories stored in the axum router's state.
+/// - `__arg1`: The player's id, then the confirmation token's id.
+///
+/// ### Returns
+/// - Success:
+///   - `204 NO CONTENT`
+/// - Error:
+///   - `404 NOT FOUND` with `MissingDocumentResponse` body if either the player or token could not
+///     be found.
+///   - `403 FORBIDDEN` if the token is not associated with the same player id.
+///   - `409 CONFLICT` if the player's account has already been confirmed.
+///   - `410 GONE` if the confirmation token has expired after 15 minutes.
+///   - `500 INTERNAL SERVER ERROR` if a database query failed, or an unexpected `DBoError` variant
+///     was returned.
 pub async fn handle_player_account_confirmation(
     State(repos): State<Repositories>,
     Path((player_id, token_id)): Path<(String, String)>,
@@ -190,6 +212,18 @@ pub async fn handle_player_account_confirmation(
     }
 }
 
+/// Handle a request to **reject** a newly registered player account.
+///
+/// ### Arguments
+/// - `__arg0`: The Repositories stored in the axum router's state.
+/// - `__arg1`: The player's id, then the confirmation token's id.
+///
+/// ### Returns
+/// - Success:
+///   - `204 NO CONTENT`
+/// - Error:
+///   - `404 NOT FOUND` with `MissingDocumentResponse` if the player or token cannot be found.
+///   - `409 CONFLICT` if the account has already been confirmed.
 pub async fn handle_player_account_rejection(
     State(repos): State<Repositories>,
     Path((player_id, token_id)): Path<(String, String)>,
