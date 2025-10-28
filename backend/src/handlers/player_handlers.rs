@@ -1,5 +1,9 @@
 //! This module provides all HTTP handler functions related to player accounts.
 
+// TODO: Some of these handlers have the possibility of receiving a MissingDocument error, and are
+// not handling them properly! Check all handlers to account for these errors - **most** of them
+// should return authentication_failure_response(PlayerNotFound).
+
 use axum::{
     Json,
     extract::{Path, State},
@@ -17,8 +21,9 @@ use crate::{
     errors::{AuthnFailureReason, DBoError},
     handlers::{
         request_bodies::{
-            AccountIdentifierRequestBody, PasswordChangeRequestBody, PasswordRequestBody,
-            PlayerLoginRequestBody, PlayerRegistrationRequestBody, ProposedEmailChangeRequestBody,
+            AccountIdentifierRequestBody, GenderChangeRequestBody, LanguageChangeRequestBody,
+            PasswordChangeRequestBody, PasswordRequestBody, PlayerLoginRequestBody,
+            PlayerRegistrationRequestBody, ProposedEmailChangeRequestBody,
             UsernameChangeRequestBody,
         },
         responses::{
@@ -912,6 +917,97 @@ pub async fn handle_player_forgot_password_reset(
             DBoError::InternalConflict => (StatusCode::CONFLICT).into_response(),
             DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
             _ => unexpected_error(e, "reset forgotten password"),
+        },
+    }
+}
+
+/// Handle a request to change a player's language.
+///
+/// This *may* also change a player's pronouns - if they change their language to Spanish, and they
+/// are non-binary, they may choose their new pronoun. Otherwise, that field is ignored - if not
+/// provided, it will default to Other.
+///
+/// ### Arguments
+/// - `__arg0`: The Repositories stored in the axum router's state.
+/// - `headers`: The HTTP request headers.
+/// - `__arg2`: The HTTP response body.
+///
+/// ### Returns
+/// - Success:
+///   - `204 NO CONTENT`
+/// - Error:
+///   - `401 UNAUTHORIZED` if JWT authentication fails
+///   - `500 INTERNAL SERVER ERROR` if a database query fails
+pub async fn handle_player_language_change(
+    State(repos): State<Repositories>,
+    headers: HeaderMap,
+    Json(body): Json<LanguageChangeRequestBody>,
+) -> Response {
+    let token = match extract_access_token(headers) {
+        Some(t) => t,
+        None => {
+            return authentication_failure_response(AuthnFailureReason::MissingAuthenticationToken);
+        }
+    };
+
+    let outcome = PlayerService::change_preferred_language(
+        repos.players(),
+        &token,
+        &body.preferred_language,
+        &body.pronoun,
+    )
+    .await;
+
+    match outcome {
+        Ok(()) => (StatusCode::NO_CONTENT).into_response(),
+        Err(e) => match e {
+            DBoError::AuthenticationFailure(reason) => authentication_failure_response(reason),
+            DBoError::MissingDocument(_) => {
+                authentication_failure_response(AuthnFailureReason::PlayerNotFound)
+            }
+            DBoError::AdapterError => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
+            _ => unexpected_error(e, "player language change"),
+        },
+    }
+}
+
+/// Handle a request to change a player's gender.
+///
+/// This request allows a player to change their pronouns as well, but **only if** their language
+/// is already set to Spanish and they change their gender to Other. If that is the case, the
+/// `pronoun` field of the request body is considered; if not provided, it will default to Other. If
+/// not Spanish and non-binary, then the pronoun will be set to match the player's gender.
+///
+/// ### Arguments
+/// - `__arg0`: The Repositories stored in the axum router's state.
+/// - `headers`: The HTTP request headers
+/// - `__arg2`: The HTTP request body
+///
+/// ### Returns
+/// - Success:
+///   - `204 NO CONTENT`
+/// - Error:
+///   - `401 UNAUTHORIZED` if JWT authentication fails
+///   - `500 INTERNAL SERVER ERROR` if a database query fails
+pub async fn handle_player_gender_change(
+    State(repos): State<Repositories>,
+    headers: HeaderMap,
+    Json(body): Json<GenderChangeRequestBody>,
+) -> Response {
+    let token = match extract_access_token(headers) {
+        Some(t) => t,
+        None => {
+            return authentication_failure_response(AuthnFailureReason::MissingAuthenticationToken);
+        }
+    };
+
+    let outcome =
+        PlayerService::change_gender(repos.players(), &token, &body.gender, &body.pronoun).await;
+
+    match outcome {
+        Ok(()) => (StatusCode::NO_CONTENT).into_response(),
+        Err(e) => match e {
+            _ => unexpected_error(e, "player gender change"),
         },
     }
 }

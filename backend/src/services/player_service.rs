@@ -1037,4 +1037,82 @@ impl PlayerService {
 
         Ok(())
     }
+
+    /// Change a player's preferred gender.
+    ///
+    /// 1. Find the player by their ID.
+    /// 2. Assume their new pronoun, unless they are a Spanish-speaking player changing their gender
+    ///    to Other.
+    ///     - If they are, then the `pronoun` argument will be considered; if not provided, it will
+    ///       default to `Other`
+    /// 3. Update the player document.
+    ///
+    /// ### Arguments
+    /// - `players`: The Player Repository
+    /// - `jwt`: The player's access JWT
+    /// - `gender`: The player's new gender
+    /// - `pronoun`: The player's new pronoun
+    ///
+    /// ### Errors
+    /// - `AuthenticationFailure(_):
+    ///   - `BadAuthenticationToken` if the JWT cannot be parsed.
+    ///   - `ExpiredAuthenticationToken` if the JWT is expired.
+    ///   - `PlayerNotFound` if the player document associated with the access token was missing.
+    ///   - `PrematureAuthenticationToken` if the JWT was created before a player's sessions were
+    ///     invalidated.
+    /// - `MissingDocument` if midway through the request the player cannot be found.
+    /// - `AdapterError` if a query fails due to a server-side error.
+    pub async fn change_gender(
+        players: &Repository<Player>,
+        jwt: &str,
+        gender: &Gender,
+        pronoun: &Option<Gender>,
+    ) -> DBoResult<()> {
+        let player = players.find_by_token(jwt).await?;
+
+        players
+            .set_gender_and_pronoun(player.id(), gender, pronoun)
+            .await?;
+
+        Ok(())
+    }
+
+    /// Change a player's preferred language.
+    ///
+    /// 1. Find the player by their ID.
+    /// 2. Assume their new pronoun, unless they are a non-binary player changing their language to
+    ///    Spanish.
+    ///     - If they are, then the `pronoun` argument will be considered; if not provided, it will
+    ///       default to `Other`
+    /// 3. Update the player document.
+    ///
+    /// ### Arguments
+    /// - `players`: The Player Repository
+    /// - `jwt`: The player's access JWT
+    /// - `gender`: The player's new gender
+    /// - `pronoun`: The player's new pronoun
+    ///
+    /// ### Errors
+    /// - `AuthenticationFailure(_):
+    ///   - `BadAuthenticationToken` if the JWT cannot be parsed.
+    ///   - `ExpiredAuthenticationToken` if the JWT is expired.
+    ///   - `PlayerNotFound` if the player document associated with the access token was missing.
+    ///   - `PrematureAuthenticationToken` if the JWT was created before a player's sessions were
+    ///     invalidated.
+    /// - `MissingDocument` if midway through the request the player cannot be found.
+    /// - `AdapterError` if a query fails due to a server-side error.
+    pub async fn change_preferred_language(
+        players: &Repository<Player>,
+        jwt: &str,
+        language: &LanguagePreference,
+        pronoun: &Option<Gender>,
+    ) -> DBoResult<()> {
+        let player = players.find_by_token(jwt).await?;
+
+        players
+            .set_preferred_language(player.id(), language, pronoun)
+            .await?;
+
+        Ok(())
+    }
 }

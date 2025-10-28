@@ -125,3 +125,15 @@ impl AccountIdentifierRequestBody {
         }
     }
 }
+
+#[derive(Deserialize)]
+pub struct LanguageChangeRequestBody {
+    pub preferred_language: LanguagePreference,
+    pub pronoun: Option<Gender>,
+}
+
+#[derive(Deserialize)]
+pub struct GenderChangeRequestBody {
+    pub gender: Gender,
+    pub pronoun: Option<Gender>,
+}

@@ -25,6 +25,16 @@ pub enum Gender {
     Other,
 }
 
+impl ToString for Gender {
+    fn to_string(&self) -> String {
+        String::from(match self {
+            Self::Male => "m",
+            Self::Female => "f",
+            Self::Other => "nb",
+        })
+    }
+}
+
 /// The player's preferred language for UX, email correspondence, etc.
 #[derive(Clone, Deserialize, Serialize)]
 pub enum LanguagePreference {
@@ -34,6 +44,15 @@ pub enum LanguagePreference {
     /// Latin American Spanish
     #[serde(rename = "es")]
     Spanish,
+}
+
+impl ToString for LanguagePreference {
+    fn to_string(&self) -> String {
+        String::from(match self {
+            Self::English => "en",
+            Self::Spanish => "es",
+        })
+    }
 }
 
 /// Keeps track of a player's gameplay statistics.

@@ -16,6 +16,7 @@ use crate::{
     models::{
         Collectible, Identifiable, Player,
         player_validation::{validate_email, validate_password, validate_username},
+        submodels::{Gender, LanguagePreference},
     },
 };
 
@@ -478,6 +479,105 @@ impl Repository<Player> {
             .find_one_and_update(
                 doc! { "player_id": player_id },
                 doc! { "proposed_email": None::<String> },
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    /// Set a player's gender and (possibly) preferred pronouns.
+    ///
+    /// A player's pronouns may only be chosen if the player's language is Spanish **and** their new
+    /// gender is Other. Otherwise, the pronoun field will be ignored, and their pronoun will be set
+    /// to match their gender. If the pronoun field is absent for a Spanish-speaking non-binary
+    /// player, it will default to Other.
+    ///
+    /// ### Arguments
+    /// - `player_id`: The player's unique identifier
+    /// - `gender`: The player's new gender
+    /// - `pronoun`: The player's new pronoun
+    ///
+    /// ### Errors
+    /// - `MissingDocument` if the player cannot be found.
+    /// - `AdapterError` if a query fails.
+    pub async fn set_gender_and_pronoun(
+        &self,
+        player_id: &str,
+        gender: &Gender,
+        pronoun: &Option<Gender>,
+    ) -> DBoResult<()> {
+        let player = match self.find_by_id(player_id).await? {
+            Some(p) => p,
+            None => return Err(DBoError::missing_document(Player::collection_name())),
+        };
+
+        let assumed_pronoun = match (player.preferred_language(), gender) {
+            (LanguagePreference::Spanish, Gender::Other) => match pronoun {
+                Some(p) => p,
+                None => &Gender::Other,
+            },
+            _ => gender,
+        };
+
+        self.collection
+            .find_one_and_update(
+                doc! { Player::id_field(): player.id() },
+                doc! {
+                    "$set": {
+                        "gender": &gender.to_string(),
+                        "pronoun": &assumed_pronoun.to_string()
+                    }
+                },
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    /// Set a player's preferred language.
+    ///
+    /// When a player changes their language to Spanish, and their gender is already Other, then
+    /// the `pronoun` argument will be considered, and their preferred pronouns will be updated as
+    /// well.
+    ///
+    /// When a player changes their language to English, their preferred pronouns will be changed
+    /// automatically to match their gender.
+    ///
+    /// ### Arguments
+    /// - `player_id`: The player's unique identifier.
+    /// - `language`: The player's new preferred language.
+    /// - `pronoun`: The player's new pronouns (if applicable).
+    ///
+    /// ### Errors
+    /// - `MissingDocument` if the player cannot be found.
+    /// - `AdapterError` if a query fails.
+    pub async fn set_preferred_language(
+        &self,
+        player_id: &str,
+        language: &LanguagePreference,
+        pronoun: &Option<Gender>,
+    ) -> DBoResult<()> {
+        let player = match self.find_by_id(player_id).await? {
+            Some(p) => p,
+            None => return Err(DBoError::missing_document(Player::collection_name())),
+        };
+
+        let assumed_pronoun = match (language, player.gender()) {
+            (LanguagePreference::Spanish, Gender::Other) => match pronoun {
+                Some(p) => p,
+                None => &Gender::Other,
+            },
+            _ => player.gender(),
+        };
+
+        self.collection
+            .find_one_and_update(
+                doc! { Player::id_field(): player.id() },
+                doc! { "$set": {
+                    "preferred_language": &language.to_string(),
+                    "pronoun": &assumed_pronoun.to_string(),
+                    }
+                },
             )
             .await?;
 
